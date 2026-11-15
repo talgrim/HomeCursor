@@ -34,6 +34,10 @@
     <string name="shortcut_name">Name</string>
     <string name="shortcut_pick_keys">Pick the keys, for example Alt and Enter</string>
     <string name="shortcut_save">Save</string>
+    <string name="shortcut_edit_named">Edit %1$s</string>
+    <string name="shortcut_delete_named">Delete %1$s</string>
+    <string name="shortcut_move_up_named">Move %1$s up</string>
+    <string name="shortcut_move_down_named">Move %1$s down</string>
     <string name="key_group_modifiers">Modifiers</string>
     <string name="key_group_function">Function keys</string>
     <string name="key_group_letters">Letters</string>
