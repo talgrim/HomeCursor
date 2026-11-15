@@ -6,4 +6,16 @@ public sealed record DiscoveryReplyMessage(
     string HostName,
     ushort TcpPort,
     ushort UdpPort,
-    bool IsBusy) : ProtocolMessage;
+    bool IsBusy) : ProtocolMessage
+{
+    protected override MessageType MessageType => MessageType.DiscoveryReply;
+
+    protected override void WriteCore(BinaryWriter writer)
+    {
+        writer.Write(ProtocolVersion);
+        WriteString(writer, HostName);
+        writer.Write(TcpPort);
+        writer.Write(UdpPort);
+        writer.Write(IsBusy);
+    }
+}

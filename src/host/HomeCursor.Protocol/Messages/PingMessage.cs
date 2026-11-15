@@ -1,4 +1,7 @@
 namespace HomeCursor.Protocol.Messages;
 
 /// <summary>Client to host: keep-alive. The host answers with <see cref="PongMessage"/>.</summary>
-public sealed record PingMessage : ProtocolMessage;
+public sealed record PingMessage : ProtocolMessage
+{
+    protected override MessageType MessageType => MessageType.Ping;
+}

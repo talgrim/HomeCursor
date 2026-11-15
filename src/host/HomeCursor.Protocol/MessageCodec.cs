@@ -9,78 +9,14 @@ namespace HomeCursor.Protocol;
 /// </summary>
 public static class MessageCodec
 {
-    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-
     public static byte[] Encode(ProtocolMessage message)
     {
         ArgumentNullException.ThrowIfNull(message);
 
         using var stream = new MemoryStream();
-        using (var writer = new BinaryWriter(stream, StrictUtf8, leaveOpen: true))
+        using (var writer = new BinaryWriter(stream, ProtocolMessage.Encoding, leaveOpen: true))
         {
-            switch (message)
-            {
-                case HelloMessage m:
-                    writer.Write((byte)MessageType.Hello);
-                    writer.Write(m.ProtocolVersion);
-                    WriteString(writer, m.ClientName);
-                    break;
-                case WelcomeMessage m:
-                    writer.Write((byte)MessageType.Welcome);
-                    writer.Write(m.ProtocolVersion);
-                    writer.Write(m.SessionId);
-                    writer.Write(m.UdpPort);
-                    writer.Write(m.PingIntervalSeconds);
-                    break;
-                case RejectMessage m:
-                    writer.Write((byte)MessageType.Reject);
-                    writer.Write((byte)m.Reason);
-                    break;
-                case PingMessage:
-                    writer.Write((byte)MessageType.Ping);
-                    break;
-                case PongMessage:
-                    writer.Write((byte)MessageType.Pong);
-                    break;
-                case MouseMoveMessage m:
-                    writer.Write((byte)MessageType.MouseMove);
-                    writer.Write(m.Dx);
-                    writer.Write(m.Dy);
-                    break;
-                case MouseButtonMessage m:
-                    writer.Write((byte)MessageType.MouseButton);
-                    writer.Write((byte)m.Button);
-                    writer.Write(m.IsDown);
-                    break;
-                case ScrollMessage m:
-                    writer.Write((byte)MessageType.Scroll);
-                    writer.Write(m.Horizontal);
-                    writer.Write(m.Vertical);
-                    break;
-                case KeyMessage m:
-                    writer.Write((byte)MessageType.Key);
-                    writer.Write((byte)m.Key);
-                    writer.Write(m.IsDown);
-                    break;
-                case TextMessage m:
-                    writer.Write((byte)MessageType.Text);
-                    WriteString(writer, m.Text);
-                    break;
-                case DiscoveryProbeMessage m:
-                    writer.Write((byte)MessageType.DiscoveryProbe);
-                    writer.Write(m.ProtocolVersion);
-                    break;
-                case DiscoveryReplyMessage m:
-                    writer.Write((byte)MessageType.DiscoveryReply);
-                    writer.Write(m.ProtocolVersion);
-                    WriteString(writer, m.HostName);
-                    writer.Write(m.TcpPort);
-                    writer.Write(m.UdpPort);
-                    writer.Write(m.IsBusy);
-                    break;
-                default:
-                    throw new ArgumentException($"Unsupported message type {message.GetType().Name}.", nameof(message));
-            }
+            message.Write(writer);
         }
 
         return stream.ToArray();
@@ -101,7 +37,7 @@ public static class MessageCodec
         }
 
         using var stream = new MemoryStream(buffer, offset, count, writable: false);
-        using var reader = new BinaryReader(stream, StrictUtf8, leaveOpen: true);
+        using var reader = new BinaryReader(stream, ProtocolMessage.Encoding, leaveOpen: true);
 
         try
         {
@@ -131,21 +67,6 @@ public static class MessageCodec
         }
     }
 
-    private static void WriteString(BinaryWriter writer, string value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-
-        var bytes = StrictUtf8.GetBytes(value);
-        if (bytes.Length > ProtocolDefaults.MaxStringBytes)
-        {
-            throw new ArgumentException(
-                $"String is longer than {ProtocolDefaults.MaxStringBytes} UTF-8 bytes.", nameof(value));
-        }
-
-        writer.Write((ushort)bytes.Length);
-        writer.Write(bytes);
-    }
-
     private static string ReadString(BinaryReader reader)
     {
         var length = reader.ReadUInt16();
@@ -162,7 +83,7 @@ public static class MessageCodec
 
         try
         {
-            return StrictUtf8.GetString(bytes);
+            return ProtocolMessage.Encoding.GetString(bytes);
         }
         catch (DecoderFallbackException ex)
         {
