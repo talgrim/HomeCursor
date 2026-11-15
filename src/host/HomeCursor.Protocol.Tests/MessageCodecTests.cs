@@ -32,6 +32,19 @@ public class MessageCodecTests
     }
 
     [Fact]
+    public void TestData_CoversEveryMessageTypeExactlyOnce()
+    {
+        var concreteMessages = typeof(ProtocolMessage).Assembly.GetTypes()
+            .Where(type => type.IsSubclassOf(typeof(ProtocolMessage)) && !type.IsAbstract)
+            .ToHashSet();
+        var coveredMessages = ((IEnumerable<object[]>)AllMessages).Select(row => row[0].GetType()).ToList();
+
+        Assert.Equal(concreteMessages.Count, Enum.GetValues<MessageType>().Length);
+        Assert.Equal(concreteMessages.Count, coveredMessages.Distinct().Count());
+        Assert.True(concreteMessages.SetEquals(coveredMessages));
+    }
+
+    [Fact]
     public void Encode_MouseMove_UsesLittleEndianLayout()
     {
         var bytes = MessageCodec.Encode(new MouseMoveMessage(1, -2));
