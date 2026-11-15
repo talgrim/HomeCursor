@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace HomeCursor.Core.Sessions;
 
-public sealed class SessionGate : ISessionGate
+public sealed class SessionGate : ISessionGate, ISessionMonitor
 {
     private readonly object _sync = new();
     private readonly ILogger<SessionGate> _logger;
@@ -14,6 +14,21 @@ public sealed class SessionGate : ISessionGate
     public SessionGate(ILogger<SessionGate> logger)
     {
         _logger = logger;
+    }
+
+    public event EventHandler<ClientSession>? SessionStarted;
+
+    public event EventHandler<SessionEndedEventArgs>? SessionEnded;
+
+    public ClientSession? Current
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _current;
+            }
+        }
     }
 
     public bool IsBusy
@@ -44,10 +59,11 @@ public sealed class SessionGate : ISessionGate
 
         _logger.LogInformation(
             "Client '{ClientName}' at {Address} acquired session {SessionId}", clientName, remoteAddress, session.SessionId);
+        Raise(SessionStarted, session);
         return true;
     }
 
-    public void Release(ClientSession session)
+    public void Release(ClientSession session, SessionEndReason reason)
     {
         lock (_sync)
         {
@@ -59,7 +75,9 @@ public sealed class SessionGate : ISessionGate
             _current = null;
         }
 
-        _logger.LogInformation("Session {SessionId} of '{ClientName}' released", session.SessionId, session.ClientName);
+        _logger.LogInformation(
+            "Session {SessionId} of '{ClientName}' released ({Reason})", session.SessionId, session.ClientName, reason);
+        Raise(SessionEnded, new SessionEndedEventArgs(session, reason));
     }
 
     public ClientSession? FindActive(uint sessionId, IPAddress remoteAddress)
@@ -72,6 +90,27 @@ public sealed class SessionGate : ISessionGate
                 && current.RemoteAddress.Equals(Normalize(remoteAddress))
                     ? current
                     : null;
+        }
+    }
+
+    private void Raise<TArgs>(EventHandler<TArgs>? handlers, TArgs args)
+    {
+        if (handlers is null)
+        {
+            return;
+        }
+
+        // Invoke subscribers one by one so a faulty one can neither break the session nor starve the others.
+        foreach (var handler in handlers.GetInvocationList().Cast<EventHandler<TArgs>>())
+        {
+            try
+            {
+                handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "A session event subscriber threw an exception");
+            }
         }
     }
 

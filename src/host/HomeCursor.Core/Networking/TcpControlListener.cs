@@ -69,6 +69,7 @@ public sealed class TcpControlListener : HostLoopBase
         using (client)
         {
             ClientSession? session = null;
+            var endReason = SessionEndReason.ClientDisconnected;
             try
             {
                 if (client.Client.RemoteEndPoint is not IPEndPoint remote)
@@ -116,23 +117,27 @@ public sealed class TcpControlListener : HostLoopBase
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                // Host is stopping.
+                endReason = SessionEndReason.HostStopping;
             }
             catch (OperationCanceledException)
             {
+                endReason = SessionEndReason.TimedOut;
                 _logger.LogWarning(
                     "Client sent nothing for {Timeout}, closing", _settings.GetHeartbeatTimeout());
             }
             catch (ProtocolException ex)
             {
+                endReason = SessionEndReason.ProtocolError;
                 _logger.LogWarning("Closing connection after protocol error: {Message}", ex.Message);
             }
             catch (Exception ex) when (ex is IOException or SocketException)
             {
+                endReason = SessionEndReason.ConnectionLost;
                 _logger.LogInformation("Connection lost: {Message}", ex.Message);
             }
             catch (Exception ex)
             {
+                endReason = SessionEndReason.Error;
                 _logger.LogError(ex, "Unexpected error while serving a client");
             }
             finally
@@ -140,7 +145,7 @@ public sealed class TcpControlListener : HostLoopBase
                 if (session is not null)
                 {
                     _dispatcher.ReleaseAll();
-                    _gate.Release(session);
+                    _gate.Release(session, endReason);
                 }
             }
         }
