@@ -7,6 +7,9 @@ import com.homecursor.client.connection.HostEndpoint
 import com.homecursor.client.connection.HostSession
 import com.homecursor.client.connection.SessionState
 import com.homecursor.client.discovery.HostDiscovery
+import com.homecursor.client.input.InputSender
+import com.homecursor.client.input.NoOpInputSender
+import com.homecursor.client.input.TcpUdpInputSender
 import com.homecursor.client.storage.SavedHostStore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +40,7 @@ class ConnectionCoordinator(
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val config: Config = Config(),
+    private val inputSenderFactory: (HostSession) -> InputSender = { TcpUdpInputSender(it, ioDispatcher) },
 ) {
     data class Config(
         val busyRetryIntervalMillis: Long = 1_000,
@@ -46,6 +50,15 @@ class ConnectionCoordinator(
 
     private val mutableStatus = MutableStateFlow<ConnectionStatus>(ConnectionStatus.Idle)
     val status: StateFlow<ConnectionStatus> = mutableStatus.asStateFlow()
+
+    private val mutableInputSender = MutableStateFlow<InputSender>(NoOpInputSender)
+
+    /**
+     * Where to send pointer input: a sender for the current connection while [status] is
+     * [ConnectionStatus.Connected], and [NoOpInputSender] at every other time. It is set before the status turns
+     * Connected, so whoever reacts to Connected already finds the sender.
+     */
+    val inputSender: StateFlow<InputSender> = mutableInputSender.asStateFlow()
 
     private var job: Job? = null
     private var session: HostSession? = null
@@ -89,6 +102,7 @@ class ConnectionCoordinator(
     private fun stopCurrent() {
         job?.cancel()
         job = null
+        mutableInputSender.value = NoOpInputSender
         val open = session
         session = null
         // Closing a socket is network I/O, which must not happen on the main thread.
@@ -119,9 +133,11 @@ class ConnectionCoordinator(
 
             target = connected.endpoint
             store.save(target)
+            mutableInputSender.value = inputSenderFactory(connected)
             mutableStatus.value = ConnectionStatus.Connected(target)
 
             val closed = connected.state.first { it is SessionState.Closed } as SessionState.Closed
+            mutableInputSender.value = NoOpInputSender
             session = null
             if (closed.failure == null) return
 

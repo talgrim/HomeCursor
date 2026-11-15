@@ -14,6 +14,14 @@
     <string name="connect">Connect</string>
     <string name="rescan">Rescan</string>
 
+    <string name="left_button">Left</string>
+    <string name="right_button">Right</string>
+    <string name="menu">Menu</string>
+    <string name="trackpad_description">Trackpad. Drag to move the pointer, tap to click, tap with two fingers to right-click, drag with two fingers to scroll.</string>
+    <string name="pointer_speed">Pointer speed: %1$.1f×</string>
+    <string name="natural_scroll">Natural scrolling</string>
+    <string name="natural_scroll_summary">The page follows your fingers, like on a phone. Off, it scrolls like a mouse wheel.</string>
+
     <string name="hosts_on_network">PCs on this network</string>
     <string name="no_hosts_found">No PC found. Make sure HomeCursor is running on it and that both are on the same network, or enter its address below.</string>
     <string name="in_use">in use</string>

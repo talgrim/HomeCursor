@@ -2,13 +2,19 @@ package com.homecursor.client.session
 
 import com.homecursor.client.connection.ConnectionFailure
 import com.homecursor.client.connection.HostEndpoint
+import com.homecursor.client.connection.HostSession
 import com.homecursor.client.discovery.DiscoveredHost
+import com.homecursor.client.input.FakeInputSender
+import com.homecursor.client.input.InputSender
+import com.homecursor.client.input.NoOpInputSender
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
@@ -16,6 +22,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -33,10 +40,11 @@ class ConnectionCoordinatorTest {
         connector: FakeConnector,
         discovery: FakeDiscovery = FakeDiscovery(),
         store: FakeStore = FakeStore(saved),
+        inputSenders: (HostSession) -> InputSender = { NoOpInputSender },
     ): ConnectionCoordinator {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val scope = CoroutineScope(dispatcher + Job()).also { scopes += it }
-        return ConnectionCoordinator(connector, discovery, store, scope, dispatcher, config)
+        return ConnectionCoordinator(connector, discovery, store, scope, dispatcher, config, inputSenders)
     }
 
     private fun hostAt(address: String, name: String = "Desktop") = DiscoveredHost(address, name, 47800, 47801, false)
@@ -71,6 +79,80 @@ class ConnectionCoordinatorTest {
 
         assertEquals(ConnectionStatus.Connected(saved), coordinator.status.value)
         assertEquals(listOf(saved), connector.attempts)
+    }
+
+    @Test
+    fun inputSender_beforeConnecting_dropsInput() = runTest {
+        val coordinator = coordinator(FakeConnector { endpoint, _ -> FakeSession(endpoint) })
+
+        assertSame(NoOpInputSender, coordinator.inputSender.value)
+    }
+
+    @Test
+    fun inputSender_connected_isTheSenderMadeForThatSession() = runTest {
+        val connector = FakeConnector { endpoint, _ -> FakeSession(endpoint) }
+        val made = mutableListOf<Pair<HostSession, FakeInputSender>>()
+        val coordinator = coordinator(connector) { session -> FakeInputSender().also { made += session to it } }
+
+        coordinator.start()
+        advanceUntilIdle()
+
+        assertEquals(1, made.size)
+        assertSame(connector.sessions.single(), made.single().first)
+        assertSame(made.single().second, coordinator.inputSender.value)
+    }
+
+    @Test
+    fun inputSender_isAlreadySetWhenTheStatusTurnsConnected() = runTest {
+        val sender = FakeInputSender()
+        val coordinator = coordinator(FakeConnector { endpoint, _ -> FakeSession(endpoint) }) { sender }
+        var seenWhenConnected: InputSender? = null
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            coordinator.status.collect { if (it is ConnectionStatus.Connected) seenWhenConnected = coordinator.inputSender.value }
+        }
+
+        coordinator.start()
+        advanceUntilIdle()
+
+        assertSame(sender, seenWhenConnected)
+    }
+
+    @Test
+    fun inputSender_connectionLost_dropsInputUntilReconnectedWithANewSender() = runTest {
+        val connector = FakeConnector { endpoint, _ -> FakeSession(endpoint) }
+        val made = mutableListOf<FakeInputSender>()
+        val coordinator = coordinator(connector) { FakeInputSender().also { made += it } }
+        coordinator.start()
+        advanceUntilIdle()
+
+        connector.sessions.single().lose()
+        runCurrent()
+        assertSame(NoOpInputSender, coordinator.inputSender.value)
+
+        advanceUntilIdle()
+        assertEquals(2, made.size)
+        assertSame(made[1], coordinator.inputSender.value)
+    }
+
+    @Test
+    fun inputSender_stop_dropsInput() = runTest {
+        val coordinator = coordinator(FakeConnector { endpoint, _ -> FakeSession(endpoint) }) { FakeInputSender() }
+        coordinator.start()
+        advanceUntilIdle()
+
+        coordinator.stop()
+
+        assertSame(NoOpInputSender, coordinator.inputSender.value)
+    }
+
+    @Test
+    fun inputSender_connectFails_staysNoOp() = runTest {
+        val coordinator = coordinator(FakeConnector { _, _ -> ConnectionFailure.Unreachable }) { FakeInputSender() }
+
+        coordinator.start()
+        advanceUntilIdle()
+
+        assertSame(NoOpInputSender, coordinator.inputSender.value)
     }
 
     @Test

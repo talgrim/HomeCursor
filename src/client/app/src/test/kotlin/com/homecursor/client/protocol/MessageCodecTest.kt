@@ -3,9 +3,12 @@ package com.homecursor.client.protocol
 import com.homecursor.client.protocol.ProtocolMessage.DiscoveryProbe
 import com.homecursor.client.protocol.ProtocolMessage.DiscoveryReply
 import com.homecursor.client.protocol.ProtocolMessage.Hello
+import com.homecursor.client.protocol.ProtocolMessage.MouseButtonChange
+import com.homecursor.client.protocol.ProtocolMessage.MouseMove
 import com.homecursor.client.protocol.ProtocolMessage.Ping
 import com.homecursor.client.protocol.ProtocolMessage.Pong
 import com.homecursor.client.protocol.ProtocolMessage.Reject
+import com.homecursor.client.protocol.ProtocolMessage.Scroll
 import com.homecursor.client.protocol.ProtocolMessage.Welcome
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -56,6 +59,61 @@ class MessageCodecTest {
     }
 
     @Test
+    fun mouseMove_encodesToSpecBytes() {
+        assertArrayEquals(bytes(0x10, 0x05, 0x00, 0xFB, 0xFF), MessageCodec.encode(MouseMove(5, -5)))
+    }
+
+    @Test
+    fun mouseMove_decodesFromSpecBytes() {
+        assertEquals(MouseMove(-2, 0x0102), MessageCodec.decode(bytes(0x10, 0xFE, 0xFF, 0x02, 0x01)))
+    }
+
+    @Test
+    fun mouseMove_int16Limits_roundTrip() {
+        for (message in listOf(MouseMove(32767, -32768), MouseMove(-32768, 32767), MouseMove(0, 0))) {
+            assertEquals(message, MessageCodec.decode(MessageCodec.encode(message)))
+        }
+    }
+
+    @Test
+    fun mouseMove_int16Limits_encodeToSpecBytes() {
+        assertArrayEquals(bytes(0x10, 0xFF, 0x7F, 0x00, 0x80), MessageCodec.encode(MouseMove(32767, -32768)))
+    }
+
+    @Test
+    fun encode_mouseMoveOutOfInt16Range_throws() {
+        assertThrows(IllegalArgumentException::class.java) { MessageCodec.encode(MouseMove(32768, 0)) }
+        assertThrows(IllegalArgumentException::class.java) { MessageCodec.encode(MouseMove(0, -32769)) }
+    }
+
+    @Test
+    fun mouseButton_encodesToSpecBytes() {
+        assertArrayEquals(bytes(0x11, 0x01, 0x01), MessageCodec.encode(MouseButtonChange(MouseButton.Left, true)))
+        assertArrayEquals(bytes(0x11, 0x02, 0x00), MessageCodec.encode(MouseButtonChange(MouseButton.Right, false)))
+        assertArrayEquals(bytes(0x11, 0x03, 0x01), MessageCodec.encode(MouseButtonChange(MouseButton.Middle, true)))
+    }
+
+    @Test
+    fun mouseButton_decodesFromSpecBytes() {
+        assertEquals(MouseButtonChange(MouseButton.Right, true), MessageCodec.decode(bytes(0x11, 0x02, 0x01)))
+    }
+
+    @Test
+    fun scroll_encodesToSpecBytes() {
+        assertArrayEquals(bytes(0x12, 0x78, 0x00, 0x88, 0xFF), MessageCodec.encode(Scroll(120, -120)))
+    }
+
+    @Test
+    fun scroll_decodesFromSpecBytes() {
+        assertEquals(Scroll(-1, 240), MessageCodec.decode(bytes(0x12, 0xFF, 0xFF, 0xF0, 0x00)))
+    }
+
+    @Test
+    fun encode_scrollOutOfInt16Range_throws() {
+        assertThrows(IllegalArgumentException::class.java) { MessageCodec.encode(Scroll(40000, 0)) }
+    }
+
+    @Test
     fun allMessages_roundTrip() {
         val messages = listOf(
             Hello(1, "Pixel ü 漢字"),
@@ -63,6 +121,10 @@ class MessageCodecTest {
             Reject(RejectReason.Busy),
             Ping,
             Pong,
+            MouseMove(-300, 450),
+            MouseButtonChange(MouseButton.Left, true),
+            MouseButtonChange(MouseButton.Middle, false),
+            Scroll(-120, 360),
             DiscoveryProbe(1),
             DiscoveryReply(1, "Desktop", 47800, 47801, false),
         )
@@ -91,8 +153,25 @@ class MessageCodecTest {
     }
 
     @Test
+    fun decode_invalidMouseButton_throws() {
+        assertThrows(ProtocolException::class.java) { MessageCodec.decode(bytes(0x11, 0x00, 0x01)) }
+        assertThrows(ProtocolException::class.java) { MessageCodec.decode(bytes(0x11, 0x04, 0x01)) }
+    }
+
+    @Test
     fun decode_truncatedMessage_throws() {
         assertThrows(ProtocolException::class.java) { MessageCodec.decode(bytes(0x02, 0x01, 0x04)) }
+    }
+
+    @Test
+    fun decode_truncatedInt16_throws() {
+        assertThrows(ProtocolException::class.java) { MessageCodec.decode(bytes(0x10, 0x05, 0x00, 0xFB)) }
+        assertThrows(ProtocolException::class.java) { MessageCodec.decode(bytes(0x12, 0x78)) }
+    }
+
+    @Test
+    fun decode_truncatedMouseButton_throws() {
+        assertThrows(ProtocolException::class.java) { MessageCodec.decode(bytes(0x11, 0x01)) }
     }
 
     @Test

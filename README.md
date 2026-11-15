@@ -11,13 +11,35 @@ HomeCursor is made of two parts:
 
 Both devices must be on the same local network. No cloud, no account, no internet connection is required.
 
-> **Status:** early development. The host can receive messages from a client on the local network and inject mouse and keyboard input (see [docs/protocol.md](docs/protocol.md)); the Android client can discover a host on the network, connect to it and reconnect to it on the next start (the touchpad and keyboard are not implemented yet). The connection is **not authenticated or encrypted** yet, so use it only on networks you trust.
+> **Status:** early development. The host can receive messages from a client on the local network and inject mouse and keyboard input (see [docs/protocol.md](docs/protocol.md)); the Android client can discover a host on the network, connect to it, reconnect to it on the next start and use the phone as a touchpad (the keyboard is not implemented yet). The connection is **not authenticated or encrypted** yet, so use it only on networks you trust.
+
+## Features
+
+- Automatic discovery of hosts on the local network, and reconnecting to the last one
+- Touchpad on the phone (see below)
+
+### Using the touchpad
+
+| Gesture | Action |
+|---------|--------|
+| Drag one finger | Move the pointer (faster swipes move it further) |
+| Tap | Left click (sent about a quarter of a second after the tap, see below) |
+| Tap twice | Double click |
+| Tap with two fingers | Right click |
+| Drag two fingers | Scroll, vertically and horizontally |
+| Tap, then touch again and drag | Drag with the left button held (select text, move windows) |
+| **Left** / **Right** buttons | Hold a mouse button; combine with a finger on the pad to drag |
+
+A tap waits briefly to see whether you touch again to drag. That is why its click comes a moment late: sending it at
+once would make the start of the drag a second press, which Windows treats as a double click (a window's title bar
+would maximise instead of moving).
+
+The menu button opens the settings: pointer speed (0.5× to 3×, 1× by default) and natural scrolling (off by default: fingers
+moving down scroll down, like a mouse wheel), plus Disconnect and Forget this PC.
 
 ## Planned features
 
-- Touchpad: move, tap to click, two-finger scroll, right click
 - On-screen keyboard with text input and special keys
-- Automatic discovery of hosts on the local network
 - Pairing with a PIN or QR code so only trusted phones can connect
 - Encrypted LAN communication
 

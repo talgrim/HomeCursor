@@ -3,6 +3,7 @@ package com.homecursor.client.ui
 import com.homecursor.client.connection.ConnectionFailure
 import com.homecursor.client.connection.HostEndpoint
 import com.homecursor.client.discovery.DiscoveredHost
+import com.homecursor.client.input.NoOpInputSender
 import com.homecursor.client.session.ConnectionCoordinator
 import com.homecursor.client.session.ConnectionStatus
 import com.homecursor.client.session.FakeConnector
@@ -40,7 +41,10 @@ class HomeViewModelTest {
         discovery: FakeDiscovery,
         store: FakeStore,
     ) = HomeViewModel(discovery) { scope ->
-        ConnectionCoordinator(connector, discovery, store, scope, StandardTestDispatcher(scheduler))
+        ConnectionCoordinator(
+            connector, discovery, store, scope, StandardTestDispatcher(scheduler),
+            inputSenderFactory = { NoOpInputSender },
+        )
     }
 
     private fun reachable() = FakeConnector { endpoint, _ -> FakeSession(endpoint) }

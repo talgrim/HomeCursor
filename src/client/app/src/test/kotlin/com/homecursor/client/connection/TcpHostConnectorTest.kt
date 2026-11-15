@@ -1,6 +1,8 @@
 package com.homecursor.client.connection
 
 import com.homecursor.client.protocol.MessageFraming
+import com.homecursor.client.protocol.MouseButton
+import com.homecursor.client.protocol.ProtocolException
 import com.homecursor.client.protocol.ProtocolMessage
 import com.homecursor.client.protocol.RejectReason
 import java.net.ServerSocket
@@ -13,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -137,6 +140,88 @@ class TcpHostConnectorTest {
 
         assertEquals(ProtocolMessage.Ping, pings.pollWithin(2_000))
         assertEquals(ProtocolMessage.Ping, pings.pollWithin(2_000))
+    }
+
+    @Test
+    fun session_udpPort_comesFromWelcome() = runBlocking {
+        val host = host { FakeHost.accept(it, FakeHost.welcome()); Thread.sleep(500) }
+
+        val session = connector().connectOk(host)
+
+        assertEquals(47801, session.udpPort)
+    }
+
+    @Test
+    fun session_send_hostReceivesMessage() = runBlocking {
+        val received = LinkedBlockingQueue<ProtocolMessage>()
+        val host = host { socket ->
+            FakeHost.accept(socket, FakeHost.welcome())
+            while (true) received.add(MessageFraming.read(socket.getInputStream()) ?: break)
+        }
+
+        val session = connector().connectOk(host)
+        session.send(ProtocolMessage.MouseButtonChange(MouseButton.Left, true))
+
+        assertEquals(ProtocolMessage.MouseButtonChange(MouseButton.Left, true), received.pollWithin(1_000))
+    }
+
+    @Test
+    fun session_sendFromManyThreadsWhilePinging_framesNeverInterleave() = runBlocking {
+        val sentCount = java.util.concurrent.atomic.AtomicInteger()
+        val received = LinkedBlockingQueue<ProtocolMessage>()
+        val corrupted = LinkedBlockingQueue<Boolean>()
+        val host = host { socket ->
+            FakeHost.accept(socket, FakeHost.welcome(pingIntervalSeconds = 1))
+            try {
+                while (true) received.add(MessageFraming.read(socket.getInputStream()) ?: break)
+            } catch (_: ProtocolException) {
+                corrupted.add(true)
+            }
+        }
+        val session = connector().connectOk(host)
+
+        // Send for longer than one ping interval, so the ping loop's write contends with the senders.
+        val deadline = System.nanoTime() + 1_500_000_000L
+        val workers = List(4) {
+            kotlin.concurrent.thread {
+                while (System.nanoTime() < deadline) {
+                    session.send(ProtocolMessage.MouseButtonChange(MouseButton.Left, sentCount.getAndIncrement() % 2 == 0))
+                }
+            }
+        }
+        workers.forEach { it.join() }
+
+        val messages = generateSequence { received.pollWithin(500) }.toList()
+        assertNull(corrupted.poll())
+        assertEquals(sentCount.get(), messages.count { it is ProtocolMessage.MouseButtonChange })
+        assertTrue(messages.any { it == ProtocolMessage.Ping })
+    }
+
+    @Test
+    fun session_sendAfterClose_isIgnored() = runBlocking {
+        val received = LinkedBlockingQueue<ProtocolMessage>()
+        val host = host { socket ->
+            FakeHost.accept(socket, FakeHost.welcome())
+            while (true) received.add(MessageFraming.read(socket.getInputStream()) ?: break)
+        }
+        val session = connector().connectOk(host)
+
+        session.close()
+        session.send(ProtocolMessage.MouseButtonChange(MouseButton.Left, true))
+
+        assertNull(received.pollWithin(300))
+        assertEquals(SessionState.Closed(null), session.state.value)
+    }
+
+    @Test
+    fun session_sendAfterHostClosed_endsWithHostClosed() = runBlocking {
+        val host = host { FakeHost.accept(it, FakeHost.welcome()); it.close() }
+        val session = connector().connectOk(host)
+        withTimeout(3_000) { session.state.first { it is SessionState.Closed } }
+
+        session.send(ProtocolMessage.MouseButtonChange(MouseButton.Left, true))
+
+        assertEquals(SessionState.Closed(ConnectionFailure.HostClosed), session.state.value)
     }
 
     @Test

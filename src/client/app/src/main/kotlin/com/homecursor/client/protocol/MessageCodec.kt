@@ -3,9 +3,12 @@ package com.homecursor.client.protocol
 import com.homecursor.client.protocol.ProtocolMessage.DiscoveryProbe
 import com.homecursor.client.protocol.ProtocolMessage.DiscoveryReply
 import com.homecursor.client.protocol.ProtocolMessage.Hello
+import com.homecursor.client.protocol.ProtocolMessage.MouseButtonChange
+import com.homecursor.client.protocol.ProtocolMessage.MouseMove
 import com.homecursor.client.protocol.ProtocolMessage.Ping
 import com.homecursor.client.protocol.ProtocolMessage.Pong
 import com.homecursor.client.protocol.ProtocolMessage.Reject
+import com.homecursor.client.protocol.ProtocolMessage.Scroll
 import com.homecursor.client.protocol.ProtocolMessage.Welcome
 
 /**
@@ -34,6 +37,21 @@ object MessageCodec {
             }
             Ping -> writer.writeByte(MessageType.PING)
             Pong -> writer.writeByte(MessageType.PONG)
+            is MouseMove -> {
+                writer.writeByte(MessageType.MOUSE_MOVE)
+                writer.writeInt16(message.dx)
+                writer.writeInt16(message.dy)
+            }
+            is MouseButtonChange -> {
+                writer.writeByte(MessageType.MOUSE_BUTTON)
+                writer.writeByte(message.button.code)
+                writer.writeBool(message.isDown)
+            }
+            is Scroll -> {
+                writer.writeByte(MessageType.SCROLL)
+                writer.writeInt16(message.horizontal)
+                writer.writeInt16(message.vertical)
+            }
             is DiscoveryProbe -> {
                 writer.writeByte(MessageType.DISCOVERY_PROBE)
                 writer.writeByte(message.protocolVersion)
@@ -66,6 +84,15 @@ object MessageCodec {
             }
             MessageType.PING -> Ping
             MessageType.PONG -> Pong
+            MessageType.MOUSE_MOVE -> MouseMove(reader.readInt16(), reader.readInt16())
+            MessageType.MOUSE_BUTTON -> {
+                val code = reader.readByte()
+                MouseButtonChange(
+                    MouseButton.fromCode(code) ?: throw ProtocolException("Invalid MouseButton value $code."),
+                    reader.readBool(),
+                )
+            }
+            MessageType.SCROLL -> Scroll(reader.readInt16(), reader.readInt16())
             MessageType.DISCOVERY_PROBE -> DiscoveryProbe(reader.readByte())
             MessageType.DISCOVERY_REPLY ->
                 DiscoveryReply(reader.readByte(), reader.readString(), reader.readUInt16(), reader.readUInt16(), reader.readBool())

@@ -42,9 +42,9 @@ import com.homecursor.client.connection.HostEndpoint
 import com.homecursor.client.discovery.DiscoveredHost
 import com.homecursor.client.session.ConnectionStatus
 
-/** Root composable: shows the connection progress, the connected host, or the list of hosts to pick from. */
+/** Root composable: shows the connection progress, the trackpad, or the list of hosts to pick from. */
 @Composable
-fun HomeCursorApp(viewModel: HomeViewModel) {
+fun HomeCursorApp(viewModel: HomeViewModel, trackpadViewModel: TrackpadViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     HomeCursorContent(
         state = state,
@@ -52,11 +52,26 @@ fun HomeCursorApp(viewModel: HomeViewModel) {
         onRescan = viewModel::rescan,
         onManualConnect = viewModel::connectManually,
         onCancel = viewModel::cancelConnecting,
-        onDisconnect = viewModel::disconnect,
-        onForget = viewModel::forgetHost,
+        connectedContent = { host ->
+            val settings by trackpadViewModel.settings.collectAsStateWithLifecycle()
+            TrackpadScreen(
+                host = host,
+                settings = settings,
+                clickFeedback = trackpadViewModel.clickFeedback,
+                onTouch = trackpadViewModel::onTouch,
+                onTouchCancelled = trackpadViewModel::onTouchCancelled,
+                onButtonPressed = trackpadViewModel::onButtonPressed,
+                onButtonReleased = trackpadViewModel::onButtonReleased,
+                onSensitivityChanged = trackpadViewModel::onSensitivityChanged,
+                onNaturalScrollChanged = trackpadViewModel::onNaturalScrollChanged,
+                onDisconnect = viewModel::disconnect,
+                onForget = viewModel::forgetHost,
+            )
+        },
     )
 }
 
+/** Stateless root. [connectedContent] is what is shown while connected, so this does not depend on the trackpad. */
 @Composable
 fun HomeCursorContent(
     state: HomeUiState,
@@ -64,14 +79,15 @@ fun HomeCursorContent(
     onRescan: () -> Unit,
     onManualConnect: (String) -> Boolean,
     onCancel: () -> Unit,
-    onDisconnect: () -> Unit,
-    onForget: () -> Unit,
+    connectedContent: @Composable (HostEndpoint) -> Unit,
 ) {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.safeDrawingPadding().padding(16.dp)) {
+            // The trackpad gets almost the whole screen: touches outside it would be lost.
+            val margin = if (state.status is ConnectionStatus.Connected) 8.dp else 16.dp
+            Box(modifier = Modifier.safeDrawingPadding().padding(margin)) {
                 when (val status = state.status) {
-                    is ConnectionStatus.Connected -> ConnectedScreen(status.host, onDisconnect, onForget)
+                    is ConnectionStatus.Connected -> connectedContent(status.host)
                     is ConnectionStatus.Connecting -> ProgressScreen(
                         stringResource(
                             if (status.isReconnect) R.string.reconnecting_to else R.string.connecting_to,
@@ -108,21 +124,6 @@ private fun ProgressScreen(message: String, onCancel: () -> Unit) {
         Text(message, style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.height(16.dp))
         OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
-    }
-}
-
-@Composable
-private fun ConnectedScreen(host: HostEndpoint, onDisconnect: () -> Unit, onForget: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(stringResource(R.string.connected_to, host.name), style = MaterialTheme.typography.titleLarge)
-        Text(host.address, style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.height(24.dp))
-        Button(onClick = onDisconnect) { Text(stringResource(R.string.disconnect)) }
-        TextButton(onClick = onForget) { Text(stringResource(R.string.forget_host)) }
     }
 }
 

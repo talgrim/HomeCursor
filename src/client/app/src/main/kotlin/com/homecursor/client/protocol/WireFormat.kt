@@ -20,6 +20,12 @@ internal class WireWriter {
         out.write((value ushr 8) and 0xFF)
     }
 
+    fun writeInt16(value: Int) {
+        require(value in Short.MIN_VALUE..Short.MAX_VALUE) { "Value $value does not fit in an Int16." }
+        out.write(value and 0xFF)
+        out.write((value shr 8) and 0xFF)
+    }
+
     fun writeUInt32(value: Long) {
         require(value in 0..0xFFFF_FFFFL) { "Value $value does not fit in a UInt32." }
         for (shift in 0 until 32 step 8) out.write(((value ushr shift) and 0xFF).toInt())
@@ -54,6 +60,8 @@ internal class WireReader(private val buffer: ByteArray, offset: Int, private va
         position += 2
         return value
     }
+
+    fun readInt16(): Int = readUInt16().toShort().toInt()
 
     fun readUInt32(): Long {
         ensure(4)

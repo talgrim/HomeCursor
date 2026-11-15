@@ -130,6 +130,7 @@ internal class TcpHostSession(
     dispatcher: CoroutineDispatcher,
 ) : HostSession {
     override val sessionId: Long = welcome.sessionId
+    override val udpPort: Int = welcome.udpPort
 
     private val mutableState = MutableStateFlow<SessionState>(SessionState.Active)
     override val state: StateFlow<SessionState> = mutableState.asStateFlow()
@@ -146,6 +147,15 @@ internal class TcpHostSession(
     }
 
     override fun close() = finish(null)
+
+    override fun send(message: ProtocolMessage) {
+        if (mutableState.value is SessionState.Closed) return
+        try {
+            synchronized(writeLock) { MessageFraming.write(socket.getOutputStream(), message) }
+        } catch (_: IOException) {
+            finish(ConnectionFailure.HostClosed)
+        }
+    }
 
     private fun readLoop() {
         val failure = try {
@@ -167,15 +177,9 @@ internal class TcpHostSession(
     }
 
     private suspend fun pingLoop() {
-        val output = socket.getOutputStream()
         while (scope.isActive) {
             delay(pingIntervalMillis)
-            try {
-                synchronized(writeLock) { MessageFraming.write(output, ProtocolMessage.Ping) }
-            } catch (_: IOException) {
-                finish(ConnectionFailure.HostClosed)
-                return
-            }
+            send(ProtocolMessage.Ping)
         }
     }
 

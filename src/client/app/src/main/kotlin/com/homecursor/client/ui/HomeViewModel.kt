@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.homecursor.client.connection.HostEndpoint
 import com.homecursor.client.discovery.DiscoveredHost
 import com.homecursor.client.discovery.HostDiscovery
+import com.homecursor.client.input.InputSender
 import com.homecursor.client.session.ConnectionCoordinator
 import com.homecursor.client.session.ConnectionStatus
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,9 @@ class HomeViewModel(
     coordinatorFactory: (CoroutineScope) -> ConnectionCoordinator,
 ) : ViewModel() {
     private val coordinator = coordinatorFactory(viewModelScope)
+
+    /** Where pointer input goes: the live connection while connected, otherwise a sender that drops it. */
+    val inputSender: StateFlow<InputSender> get() = coordinator.inputSender
 
     private class Scan(val hosts: List<DiscoveredHost> = emptyList(), val isScanning: Boolean = false)
 
