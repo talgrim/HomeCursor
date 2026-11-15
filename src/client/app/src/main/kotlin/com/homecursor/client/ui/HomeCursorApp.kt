@@ -41,6 +41,7 @@ import com.homecursor.client.connection.ConnectionFailure
 import com.homecursor.client.connection.HostEndpoint
 import com.homecursor.client.discovery.DiscoveredHost
 import com.homecursor.client.session.ConnectionStatus
+import com.homecursor.client.ui.theme.HomeCursorTheme
 
 /** Root composable: shows the connection progress, the trackpad, or the list of hosts to pick from. */
 @Composable
@@ -80,7 +81,7 @@ fun HomeCursorContent(
     onCancel: () -> Unit,
     connectedContent: @Composable (HostEndpoint) -> Unit,
 ) {
-    MaterialTheme {
+    HomeCursorTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             // The trackpad gets almost the whole screen: touches outside it would be lost.
             val margin = if (state.status is ConnectionStatus.Connected) 8.dp else 16.dp
