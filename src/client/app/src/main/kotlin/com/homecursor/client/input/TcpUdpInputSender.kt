@@ -3,7 +3,9 @@ package com.homecursor.client.input
 import com.homecursor.client.connection.HostSession
 import com.homecursor.client.connection.SessionState
 import com.homecursor.client.protocol.MouseButton
+import com.homecursor.client.protocol.ProtocolConstants
 import com.homecursor.client.protocol.ProtocolMessage
+import com.homecursor.client.protocol.SpecialKey
 import com.homecursor.client.protocol.UdpPacket
 import java.io.IOException
 import java.net.DatagramPacket
@@ -19,8 +21,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * Sends pointer movement and scrolling as UDP datagrams (high rate, loss is harmless) and button changes over the
- * session's TCP connection (must not be lost), as `docs/protocol.md` recommends.
+ * Sends pointer movement and scrolling as UDP datagrams (high rate, loss is harmless) and button, key and text
+ * changes over the session's TCP connection (must not be lost), as `docs/protocol.md` recommends.
  *
  * Calls only enqueue; one consumer coroutine on [dispatcher] delivers the messages in order, so a button change
  * never overtakes the movement queued before it and the caller (the UI thread) never blocks on a socket. The
@@ -58,6 +60,16 @@ class TcpUdpInputSender(
 
     override fun sendButton(button: MouseButton, isDown: Boolean) {
         queue.trySend(ProtocolMessage.MouseButtonChange(button, isDown))
+    }
+
+    override fun sendKey(key: SpecialKey, isDown: Boolean) {
+        queue.trySend(ProtocolMessage.Key(key, isDown))
+    }
+
+    override fun sendText(text: String) {
+        for (chunk in TextChunker.split(text, ProtocolConstants.MAX_STRING_BYTES)) {
+            queue.trySend(ProtocolMessage.Text(chunk))
+        }
     }
 
     /** Stops delivering. Messages still queued are dropped; the host releases held buttons when the session ends. */

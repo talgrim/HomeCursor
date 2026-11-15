@@ -3,12 +3,14 @@ package com.homecursor.client.protocol
 import com.homecursor.client.protocol.ProtocolMessage.DiscoveryProbe
 import com.homecursor.client.protocol.ProtocolMessage.DiscoveryReply
 import com.homecursor.client.protocol.ProtocolMessage.Hello
+import com.homecursor.client.protocol.ProtocolMessage.Key
 import com.homecursor.client.protocol.ProtocolMessage.MouseButtonChange
 import com.homecursor.client.protocol.ProtocolMessage.MouseMove
 import com.homecursor.client.protocol.ProtocolMessage.Ping
 import com.homecursor.client.protocol.ProtocolMessage.Pong
 import com.homecursor.client.protocol.ProtocolMessage.Reject
 import com.homecursor.client.protocol.ProtocolMessage.Scroll
+import com.homecursor.client.protocol.ProtocolMessage.Text
 import com.homecursor.client.protocol.ProtocolMessage.Welcome
 
 /**
@@ -52,6 +54,15 @@ object MessageCodec {
                 writer.writeInt16(message.horizontal)
                 writer.writeInt16(message.vertical)
             }
+            is Key -> {
+                writer.writeByte(MessageType.KEY)
+                writer.writeByte(message.key.code)
+                writer.writeBool(message.isDown)
+            }
+            is Text -> {
+                writer.writeByte(MessageType.TEXT)
+                writer.writeString(message.text)
+            }
             is DiscoveryProbe -> {
                 writer.writeByte(MessageType.DISCOVERY_PROBE)
                 writer.writeByte(message.protocolVersion)
@@ -93,6 +104,14 @@ object MessageCodec {
                 )
             }
             MessageType.SCROLL -> Scroll(reader.readInt16(), reader.readInt16())
+            MessageType.KEY -> {
+                val code = reader.readByte()
+                Key(
+                    SpecialKey.fromCode(code) ?: throw ProtocolException("Invalid SpecialKey value $code."),
+                    reader.readBool(),
+                )
+            }
+            MessageType.TEXT -> Text(reader.readString())
             MessageType.DISCOVERY_PROBE -> DiscoveryProbe(reader.readByte())
             MessageType.DISCOVERY_REPLY ->
                 DiscoveryReply(reader.readByte(), reader.readString(), reader.readUInt16(), reader.readUInt16(), reader.readBool())
