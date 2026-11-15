@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -23,6 +24,7 @@ fun ConnectedScreen(
     trackpadViewModel: TrackpadViewModel,
     keyboardViewModel: KeyboardViewModel,
     shortcutsViewModel: ShortcutsViewModel,
+    tutorialViewModel: TutorialViewModel,
     onDisconnect: () -> Unit,
     onForget: () -> Unit,
 ) {
@@ -31,7 +33,12 @@ fun ConnectedScreen(
     val mode by keyboardViewModel.mode.collectAsStateWithLifecycle()
     val heldModifiers by keyboardViewModel.heldModifiers.collectAsStateWithLifecycle()
     val shortcuts by shortcutsViewModel.shortcuts.collectAsStateWithLifecycle()
+    val tutorialStep by tutorialViewModel.stepIndex.collectAsStateWithLifecycle()
     var shortcutsOpen by rememberSaveable { mutableStateOf(false) }
+    val tutorialTargets = remember { TutorialTargets() }
+
+    // The first time the trackpad is shown after connecting, the tour starts by itself.
+    LaunchedEffect(Unit) { tutorialViewModel.onTrackpadShown() }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
@@ -61,6 +68,21 @@ fun ConnectedScreen(
                 onKeyboard = { if (landscape) keyboardViewModel.open() else shortcutsOpen = true },
                 onDisconnect = onDisconnect,
                 onForget = onForget,
+                tutorialTargets = tutorialTargets,
+                onTutorial = tutorialViewModel::start,
+            )
+        }
+
+        tutorialStep?.let { index ->
+            val steps = TutorialSteps.all
+            TutorialOverlay(
+                step = steps[index],
+                index = index,
+                count = steps.size,
+                targets = tutorialTargets,
+                onNext = tutorialViewModel::next,
+                onBack = tutorialViewModel::back,
+                onSkip = tutorialViewModel::skip,
             )
         }
 

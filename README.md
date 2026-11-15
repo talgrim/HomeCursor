@@ -35,7 +35,7 @@ once would make the start of the drag a second press, which Windows treats as a 
 would maximise instead of moving).
 
 The gear in the upper right corner of the pad opens the settings: pointer speed (0.5× to 3×, 1× by default) and natural scrolling (off by default: fingers
-moving down scroll down, like a mouse wheel), plus Disconnect and Forget this PC.
+moving down scroll down, like a mouse wheel), a Tutorial item that replays the guided tour, plus Disconnect and Forget this PC. The tour (the gestures, the buttons and the settings, step by step, with a Skip option) starts by itself the first time the touchpad is shown after connecting.
 
 ## Repository layout
 

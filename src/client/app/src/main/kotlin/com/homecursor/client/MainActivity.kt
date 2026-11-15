@@ -20,11 +20,13 @@ import com.homecursor.client.session.ConnectionCoordinator
 import com.homecursor.client.storage.SharedPrefsSavedHostStore
 import com.homecursor.client.storage.SharedPrefsShortcutStore
 import com.homecursor.client.storage.SharedPrefsTrackpadSettingsStore
+import com.homecursor.client.storage.SharedPrefsTutorialStore
 import com.homecursor.client.ui.HomeCursorApp
 import com.homecursor.client.ui.HomeViewModel
 import com.homecursor.client.ui.KeyboardViewModel
 import com.homecursor.client.ui.ShortcutsViewModel
 import com.homecursor.client.ui.TrackpadViewModel
+import com.homecursor.client.ui.TutorialViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -41,6 +43,8 @@ class MainActivity : ComponentActivity() {
         ShortcutsViewModelFactory(applicationContext, viewModel.inputSender)
     }
 
+    private val tutorialViewModel: TutorialViewModel by viewModels { TutorialViewModelFactory(applicationContext) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -55,7 +59,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         setContent {
-            HomeCursorApp(viewModel, trackpadViewModel, keyboardViewModel, shortcutsViewModel)
+            HomeCursorApp(viewModel, trackpadViewModel, keyboardViewModel, shortcutsViewModel, tutorialViewModel)
         }
     }
 
@@ -105,6 +109,16 @@ private class ShortcutsViewModelFactory(
             context.getSharedPreferences(SharedPrefsShortcutStore.FILE_NAME, Context.MODE_PRIVATE),
         )
         return ShortcutsViewModel(inputSender, store) as T
+    }
+}
+
+private class TutorialViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        val store = SharedPrefsTutorialStore(
+            context.getSharedPreferences(SharedPrefsTutorialStore.FILE_NAME, Context.MODE_PRIVATE),
+        )
+        return TutorialViewModel(store) as T
     }
 }
 

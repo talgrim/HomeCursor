@@ -3,6 +3,7 @@ package com.homecursor.client.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,6 +92,8 @@ fun TrackpadScreen(
     onKeyboard: () -> Unit,
     onDisconnect: () -> Unit,
     onForget: () -> Unit,
+    tutorialTargets: TutorialTargets,
+    onTutorial: () -> Unit,
 ) {
     KeepScreenOn()
     ClickHaptics(clickFeedback)
@@ -98,16 +101,16 @@ fun TrackpadScreen(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val buttons = @Composable { vertical: Boolean ->
-            ButtonStrip(vertical, onButtonPressed, onButtonReleased, onKeyboard)
+            ButtonStrip(vertical, onButtonPressed, onButtonReleased, onKeyboard, tutorialTargets)
         }
         if (maxWidth > maxHeight) {
             Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 buttons(true)
-                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxHeight())
+                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, tutorialTargets, Modifier.weight(1f).fillMaxHeight())
             }
         } else {
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxWidth())
+                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, tutorialTargets, Modifier.weight(1f).fillMaxWidth())
                 buttons(false)
             }
         }
@@ -121,6 +124,10 @@ fun TrackpadScreen(
             onNaturalScrollChanged = onNaturalScrollChanged,
             onDisconnect = onDisconnect,
             onForget = onForget,
+            onTutorial = {
+                menuOpen = false
+                onTutorial()
+            },
             onDismiss = { menuOpen = false },
         )
     }
@@ -137,12 +144,16 @@ private fun PadWithSettings(
     onTouch: (Long, List<TouchPoint>) -> Unit,
     onTouchCancelled: () -> Unit,
     onSettings: () -> Unit,
+    tutorialTargets: TutorialTargets,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier) {
+    Box(modifier = modifier.tutorialTarget(tutorialTargets, TutorialTarget.Pad)) {
         TrackpadSurface(onTouch, onTouchCancelled, Modifier.fillMaxSize())
         ConnectionChip(host.name, Modifier.align(Alignment.TopStart).padding(Spacing.md))
-        IconButton(onClick = onSettings, modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs)) {
+        IconButton(
+            onClick = onSettings,
+            modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs).tutorialTarget(tutorialTargets, TutorialTarget.Settings),
+        ) {
             Icon(
                 painterResource(R.drawable.ic_settings),
                 contentDescription = stringResource(R.string.menu),
@@ -239,11 +250,12 @@ private fun ButtonStrip(
     onPressed: (MouseButton) -> Unit,
     onReleased: (MouseButton) -> Unit,
     onKeyboard: () -> Unit,
+    targets: TutorialTargets,
 ) {
     val keyboard = @Composable { modifier: Modifier ->
         FilledTonalIconButton(
             onClick = onKeyboard,
-            modifier = modifier.size(KEYBOARD_BUTTON_SIZE),
+            modifier = modifier.size(KEYBOARD_BUTTON_SIZE).tutorialTarget(targets, TutorialTarget.Keyboard),
             shape = MaterialTheme.shapes.large,
             colors = IconButtonDefaults.filledTonalIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -259,9 +271,14 @@ private fun ButtonStrip(
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            PadButton(MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
-            PadButton(MouseButton.Middle, onPressed, onReleased, Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxWidth())
-            PadButton(MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
+            PadButton(MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth().tutorialTarget(targets, TutorialTarget.LeftButton))
+            PadButton(
+                MouseButton.Middle,
+                onPressed,
+                onReleased,
+                Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxWidth().tutorialTarget(targets, TutorialTarget.MiddleButton),
+            )
+            PadButton(MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth().tutorialTarget(targets, TutorialTarget.RightButton))
             keyboard(Modifier)
         }
     } else {
@@ -270,9 +287,14 @@ private fun ButtonStrip(
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PadButton(MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
-            PadButton(MouseButton.Middle, onPressed, onReleased, Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxHeight())
-            PadButton(MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
+            PadButton(MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight().tutorialTarget(targets, TutorialTarget.LeftButton))
+            PadButton(
+                MouseButton.Middle,
+                onPressed,
+                onReleased,
+                Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxHeight().tutorialTarget(targets, TutorialTarget.MiddleButton),
+            )
+            PadButton(MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight().tutorialTarget(targets, TutorialTarget.RightButton))
             keyboard(Modifier)
         }
     }
@@ -350,6 +372,7 @@ private fun SettingsSheet(
     onNaturalScrollChanged: (Boolean) -> Unit,
     onDisconnect: () -> Unit,
     onForget: () -> Unit,
+    onTutorial: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -381,6 +404,11 @@ private fun SettingsSheet(
                     Text(stringResource(R.string.natural_scroll_summary), style = MaterialTheme.typography.bodySmall)
                 }
                 Switch(checked = settings.naturalScroll, onCheckedChange = onNaturalScrollChanged)
+            }
+
+            Column(modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onTutorial)) {
+                Text(stringResource(R.string.tutorial), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.tutorial_summary), style = MaterialTheme.typography.bodySmall)
             }
 
             Button(onClick = onDisconnect, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.disconnect)) }
