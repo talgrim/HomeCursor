@@ -49,6 +49,7 @@
     <string name="hosts_on_network">PCs on this network</string>
     <string name="no_hosts_found">No PC found. Make sure HomeCursor is running on it and that both are on the same network, or enter its address below.</string>
     <string name="in_use">in use</string>
+    <string name="scanning">Scanning…</string>
     <string name="manual_address">PC address (e.g. 192.168.1.20)</string>
     <string name="manual_address_invalid">Enter an address like 192.168.1.20 or 192.168.1.20:47800</string>
 
