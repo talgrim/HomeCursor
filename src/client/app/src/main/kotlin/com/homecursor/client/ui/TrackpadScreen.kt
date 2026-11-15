@@ -1,12 +1,13 @@
 package com.homecursor.client.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,15 +18,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -49,7 +51,10 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.homecursor.client.R
@@ -57,6 +62,7 @@ import com.homecursor.client.connection.HostEndpoint
 import com.homecursor.client.input.TouchPoint
 import com.homecursor.client.protocol.MouseButton
 import com.homecursor.client.storage.TrackpadSettings
+import com.homecursor.client.ui.theme.Spacing
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -91,12 +97,12 @@ fun TrackpadScreen(
             ButtonStrip(vertical, onButtonPressed, onButtonReleased, onKeyboard)
         }
         if (maxWidth > maxHeight) {
-            Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 buttons(true)
                 PadWithSettings(onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxHeight())
             }
         } else {
-            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 PadWithSettings(onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxWidth())
                 buttons(false)
             }
@@ -130,7 +136,7 @@ private fun PadWithSettings(
 ) {
     Box(modifier = modifier) {
         TrackpadSurface(onTouch, onTouchCancelled, Modifier.fillMaxSize())
-        IconButton(onClick = onSettings, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+        IconButton(onClick = onSettings, modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs)) {
             Icon(
                 painterResource(R.drawable.ic_settings),
                 contentDescription = stringResource(R.string.menu),
@@ -157,8 +163,9 @@ private fun TrackpadSurface(
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), MaterialTheme.shapes.large)
             .semantics { contentDescription = description }
             .pointerInput(Unit) {
                 try {
@@ -181,8 +188,12 @@ private fun TrackpadSurface(
 /** The middle button is used less than Left and Right, so it gets a smaller share of the strip. */
 private const val MIDDLE_BUTTON_WEIGHT = 0.6f
 
-/** The keyboard button is a small outlined square, so it is clear where it takes a tap. */
+/** The keyboard button is a small tonal square, so it is clear where it takes a tap. */
 private val KEYBOARD_BUTTON_SIZE = 56.dp
+
+/** Width of the strip in landscape and height of it in portrait. */
+private val STRIP_WIDTH = 120.dp
+private val STRIP_HEIGHT = 80.dp
 
 @Composable
 private fun ButtonStrip(
@@ -192,42 +203,51 @@ private fun ButtonStrip(
     onKeyboard: () -> Unit,
 ) {
     val keyboard = @Composable { modifier: Modifier ->
-        OutlinedButton(onClick = onKeyboard, modifier = modifier.size(KEYBOARD_BUTTON_SIZE), contentPadding = PaddingValues(0.dp)) {
+        FilledTonalIconButton(
+            onClick = onKeyboard,
+            modifier = modifier.size(KEYBOARD_BUTTON_SIZE),
+            shape = MaterialTheme.shapes.large,
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
+        ) {
             Icon(painterResource(R.drawable.ic_keyboard), contentDescription = stringResource(R.string.open_keyboard))
         }
     }
     if (vertical) {
         Column(
-            modifier = Modifier.width(120.dp).fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.width(STRIP_WIDTH).fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            PadButton(stringResource(R.string.left_button), MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
-            PadButton(stringResource(R.string.middle_button), MouseButton.Middle, onPressed, onReleased, Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxWidth())
-            PadButton(stringResource(R.string.right_button), MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
+            PadButton(MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
+            PadButton(MouseButton.Middle, onPressed, onReleased, Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxWidth())
+            PadButton(MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
             keyboard(Modifier)
         }
     } else {
         Row(
-            modifier = Modifier.fillMaxWidth().height(80.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().height(STRIP_HEIGHT),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PadButton(stringResource(R.string.left_button), MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
-            PadButton(stringResource(R.string.middle_button), MouseButton.Middle, onPressed, onReleased, Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxHeight())
-            PadButton(stringResource(R.string.right_button), MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
+            PadButton(MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
+            PadButton(MouseButton.Middle, onPressed, onReleased, Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxHeight())
+            PadButton(MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
             keyboard(Modifier)
         }
     }
 }
 
 /**
- * A mouse button. It is down for exactly as long as a finger is on it, so holding it and dragging on the pad with
- * another finger drags. [onReleased] also runs if the button leaves the screen while pressed.
+ * A mouse button, drawn as a mouse with the button's zone filled (see [MouseGlyph]). It is down for exactly as long as
+ * a finger is on it, so holding it and dragging on the pad with another finger drags. [onReleased] also runs if the
+ * button leaves the screen while pressed. Assistive technology gets a button with a spoken name whose click is a
+ * press and an immediate release, since it cannot hold a finger down.
  */
 @Composable
 private fun PadButton(
-    label: String,
     button: MouseButton,
     onPressed: (MouseButton) -> Unit,
     onReleased: (MouseButton) -> Unit,
@@ -237,11 +257,32 @@ private fun PadButton(
     val currentOnReleased by rememberUpdatedState(onReleased)
     var isDown by remember { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
+    val isMiddle = button == MouseButton.Middle
+    val restingColor = if (isMiddle) colors.secondaryContainer else colors.primaryContainer
+    val restingContent = if (isMiddle) colors.onSecondaryContainer else colors.onPrimaryContainer
+    val background by animateColorAsState(if (isDown) colors.primary else restingColor, label = "padButtonBackground")
+    val content by animateColorAsState(if (isDown) colors.onPrimary else restingContent, label = "padButtonContent")
+    val description = stringResource(
+        when (button) {
+            MouseButton.Left -> R.string.left_button
+            MouseButton.Middle -> R.string.middle_button
+            MouseButton.Right -> R.string.right_button
+        },
+    )
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (isDown) colors.primary else colors.primaryContainer)
+            .clip(MaterialTheme.shapes.large)
+            .background(background)
+            .semantics {
+                role = Role.Button
+                contentDescription = description
+                onClick {
+                    currentOnPressed(button)
+                    currentOnReleased(button)
+                    true
+                }
+            }
             .pointerInput(button) {
                 detectTapGestures(
                     onPress = {
@@ -258,11 +299,7 @@ private fun PadButton(
             },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.titleMedium,
-            color = if (isDown) colors.onPrimary else colors.onPrimaryContainer,
-        )
+        MouseGlyph(button, content)
     }
 }
 
@@ -281,10 +318,10 @@ private fun SettingsSheet(
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp)
+                .padding(horizontal = Spacing.xl)
+                .padding(bottom = Spacing.xl)
                 .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {
             Column {
                 Text(stringResource(R.string.connected_to, host.name), style = MaterialTheme.typography.titleLarge)
@@ -300,7 +337,7 @@ private fun SettingsSheet(
                 )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.natural_scroll), style = MaterialTheme.typography.bodyLarge)
                     Text(stringResource(R.string.natural_scroll_summary), style = MaterialTheme.typography.bodySmall)
