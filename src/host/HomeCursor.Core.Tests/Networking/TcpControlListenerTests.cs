@@ -7,6 +7,7 @@ using HomeCursor.Core.Tests.Support;
 using HomeCursor.Protocol;
 using HomeCursor.Protocol.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace HomeCursor.Core.Tests.Networking;
 
@@ -28,7 +29,7 @@ public sealed class TcpControlListenerTests : IAsyncLifetime
 
     public TcpControlListenerTests()
     {
-        _listener = new TcpControlListener(_settings, _gate, _dispatcher, NullLogger<TcpControlListener>.Instance);
+        _listener = new TcpControlListener(Options.Create(_settings), _gate, _dispatcher, NullLogger<TcpControlListener>.Instance);
     }
 
     public Task InitializeAsync() => _listener.StartAsync(CancellationToken.None);
@@ -212,7 +213,7 @@ public sealed class TcpControlListenerTests : IAsyncLifetime
             var port = ((IPEndPoint)blocker.LocalEndpoint).Port;
             var settings = _settings with { TcpPort = port };
             var listener = new TcpControlListener(
-                settings, _gate, _dispatcher, NullLogger<TcpControlListener>.Instance);
+                Options.Create(settings), _gate, _dispatcher, NullLogger<TcpControlListener>.Instance);
 
             await Assert.ThrowsAsync<SocketException>(() => listener.StartAsync(CancellationToken.None));
         }

@@ -7,6 +7,7 @@ using HomeCursor.Core.Tests.Support;
 using HomeCursor.Protocol;
 using HomeCursor.Protocol.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace HomeCursor.Core.Tests.Networking;
 
@@ -25,7 +26,7 @@ public sealed class UdpPointerReceiverTests : IAsyncLifetime
 
     public UdpPointerReceiverTests()
     {
-        _receiver = new UdpPointerReceiver(_settings, _gate, _dispatcher, NullLogger<UdpPointerReceiver>.Instance);
+        _receiver = new UdpPointerReceiver(Options.Create(_settings), _gate, _dispatcher, NullLogger<UdpPointerReceiver>.Instance);
     }
 
     public Task InitializeAsync() => _receiver.StartAsync(CancellationToken.None);
@@ -149,7 +150,7 @@ public sealed class UdpPointerReceiverTests : IAsyncLifetime
     public async Task StartAsync_WhenPortIsInUse_Throws()
     {
         var receiver = new UdpPointerReceiver(
-            _settings, _gate, _dispatcher, NullLogger<UdpPointerReceiver>.Instance);
+            Options.Create(_settings), _gate, _dispatcher, NullLogger<UdpPointerReceiver>.Instance);
 
         await Assert.ThrowsAsync<SocketException>(() => receiver.StartAsync(CancellationToken.None));
     }
