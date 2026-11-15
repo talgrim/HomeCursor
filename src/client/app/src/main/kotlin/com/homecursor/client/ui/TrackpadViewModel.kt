@@ -14,8 +14,11 @@ import com.homecursor.client.storage.TrackpadSettings
 import com.homecursor.client.storage.TrackpadSettingsStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -50,6 +53,12 @@ class TrackpadViewModel(
     private val mutableSettings = MutableStateFlow(settingsStore.load())
     val settings: StateFlow<TrackpadSettings> = mutableSettings.asStateFlow()
 
+    // Never suspends the sender of the touch: if the UI is not listening, the feedback is simply dropped.
+    private val mutableClickFeedback = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+
+    /** Emits whenever a button goes down (a click, the start of a drag, a press on the button bar), for haptics. */
+    val clickFeedback: Flow<Unit> = mutableClickFeedback.asSharedFlow()
+
     init {
         // A new connection (or none): whatever the old gesture had pending or held means nothing to it. A button
         // held on the old connection is released by the host itself when that connection ends.
@@ -67,6 +76,7 @@ class TrackpadViewModel(
         if (!heldBarButtons.add(button)) return
         flush()
         inputSender.value.sendButton(button, true)
+        mutableClickFeedback.tryEmit(Unit)
     }
 
     /** A button of the button bar went up. Ignored if it was not pressed (for example after [onBackground]). */
@@ -111,10 +121,12 @@ class TrackpadViewModel(
                     flush()
                     inputSender.value.sendButton(command.button, true)
                     inputSender.value.sendButton(command.button, false)
+                    mutableClickFeedback.tryEmit(Unit)
                 }
                 is PadCommand.ButtonDown -> {
                     flush()
                     inputSender.value.sendButton(command.button, true)
+                    mutableClickFeedback.tryEmit(Unit)
                 }
                 is PadCommand.ButtonUp -> {
                     flush()
