@@ -3,11 +3,14 @@ namespace HomeCursor.Protocol.Messages;
 /// <summary>Client to host: first message on a TCP connection.</summary>
 public sealed record HelloMessage(byte ProtocolVersion, string ClientName) : ProtocolMessage
 {
-    protected override MessageType MessageType => MessageType.Hello;
+    private protected override MessageType MessageType => MessageType.Hello;
 
-    protected override void WriteCore(BinaryWriter writer)
+    internal static HelloMessage Read(BinaryReader reader) =>
+        new(reader.ReadByte(), WireFormat.ReadString(reader));
+
+    private protected override void WriteCore(BinaryWriter writer)
     {
         writer.Write(ProtocolVersion);
-        WriteString(writer, ClientName);
+        WireFormat.WriteString(writer, ClientName);
     }
 }

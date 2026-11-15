@@ -5,9 +5,12 @@ namespace HomeCursor.Protocol.Messages;
 /// </summary>
 public sealed record ScrollMessage(short Horizontal, short Vertical) : ProtocolMessage
 {
-    protected override MessageType MessageType => MessageType.Scroll;
+    private protected override MessageType MessageType => MessageType.Scroll;
 
-    protected override void WriteCore(BinaryWriter writer)
+    internal static ScrollMessage Read(BinaryReader reader) =>
+        new(reader.ReadInt16(), reader.ReadInt16());
+
+    private protected override void WriteCore(BinaryWriter writer)
     {
         writer.Write(Horizontal);
         writer.Write(Vertical);

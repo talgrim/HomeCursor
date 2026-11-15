@@ -1,15 +1,13 @@
-using System.Text;
-
 namespace HomeCursor.Protocol.Messages;
 
 /// <summary>
-/// Base type of every message exchanged between client and host.
+/// Base type of every message exchanged between client and host. The hierarchy is closed to this assembly:
+/// each message declares its <see cref="MessageType"/> and writes its own fields, and
+/// <see cref="MessageCodec"/> holds the matching reader.
 /// </summary>
 public abstract record ProtocolMessage
 {
-    internal static readonly UTF8Encoding Encoding = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-
-    protected abstract MessageType MessageType { get; }
+    private protected abstract MessageType MessageType { get; }
 
     internal void Write(BinaryWriter writer)
     {
@@ -17,22 +15,7 @@ public abstract record ProtocolMessage
         WriteCore(writer);
     }
 
-    protected virtual void WriteCore(BinaryWriter writer)
+    private protected virtual void WriteCore(BinaryWriter writer)
     {
-    }
-
-    protected static void WriteString(BinaryWriter writer, string value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-
-        var bytes = Encoding.GetBytes(value);
-        if (bytes.Length > ProtocolDefaults.MaxStringBytes)
-        {
-            throw new ArgumentException(
-                $"String is longer than {ProtocolDefaults.MaxStringBytes} UTF-8 bytes.", nameof(value));
-        }
-
-        writer.Write((ushort)bytes.Length);
-        writer.Write(bytes);
     }
 }

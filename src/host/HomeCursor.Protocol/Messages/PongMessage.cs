@@ -3,5 +3,7 @@ namespace HomeCursor.Protocol.Messages;
 /// <summary>Host to client: answer to <see cref="PingMessage"/>.</summary>
 public sealed record PongMessage : ProtocolMessage
 {
-    protected override MessageType MessageType => MessageType.Pong;
+    private protected override MessageType MessageType => MessageType.Pong;
+
+    internal static PongMessage Read(BinaryReader reader) => new();
 }

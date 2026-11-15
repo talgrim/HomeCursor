@@ -8,12 +8,15 @@ public sealed record DiscoveryReplyMessage(
     ushort UdpPort,
     bool IsBusy) : ProtocolMessage
 {
-    protected override MessageType MessageType => MessageType.DiscoveryReply;
+    private protected override MessageType MessageType => MessageType.DiscoveryReply;
 
-    protected override void WriteCore(BinaryWriter writer)
+    internal static DiscoveryReplyMessage Read(BinaryReader reader) =>
+        new(reader.ReadByte(), WireFormat.ReadString(reader), reader.ReadUInt16(), reader.ReadUInt16(), reader.ReadBoolean());
+
+    private protected override void WriteCore(BinaryWriter writer)
     {
         writer.Write(ProtocolVersion);
-        WriteString(writer, HostName);
+        WireFormat.WriteString(writer, HostName);
         writer.Write(TcpPort);
         writer.Write(UdpPort);
         writer.Write(IsBusy);

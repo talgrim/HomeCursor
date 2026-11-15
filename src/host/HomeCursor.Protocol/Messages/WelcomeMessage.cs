@@ -7,9 +7,12 @@ namespace HomeCursor.Protocol.Messages;
 public sealed record WelcomeMessage(byte ProtocolVersion, uint SessionId, ushort UdpPort, byte PingIntervalSeconds)
     : ProtocolMessage
 {
-    protected override MessageType MessageType => MessageType.Welcome;
+    private protected override MessageType MessageType => MessageType.Welcome;
 
-    protected override void WriteCore(BinaryWriter writer)
+    internal static WelcomeMessage Read(BinaryReader reader) =>
+        new(reader.ReadByte(), reader.ReadUInt32(), reader.ReadUInt16(), reader.ReadByte());
+
+    private protected override void WriteCore(BinaryWriter writer)
     {
         writer.Write(ProtocolVersion);
         writer.Write(SessionId);
