@@ -20,8 +20,8 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
 
-        var settingsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "HomeCursor", "settings.json");
+        // settings.json ships next to the executable (copied from the project on build).
+        var settingsPath = Path.Combine(AppContext.BaseDirectory, "settings.json");
 
         using var provider = BuildServiceProvider(settingsPath);
 
