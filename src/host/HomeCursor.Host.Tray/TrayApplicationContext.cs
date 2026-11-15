@@ -19,12 +19,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
         var exitItem = new ToolStripMenuItem("Exit", image: null, (_, _) => ExitThread());
 
         var menu = new ContextMenuStrip();
-        menu.Items.AddRange([_statusItem, new ToolStripSeparator(), exitItem]);
+        menu.Items.AddRange(_statusItem, new ToolStripSeparator(), exitItem);
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
-            Text = "HomeCursor",
+            Icon = SystemIcons.Exclamation,
+            Text = $"HomeCursor - {_host.Status}",
             ContextMenuStrip = menu,
             Visible = true
         };
@@ -43,5 +43,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
         base.ExitThreadCore();
     }
 
-    private void UpdateStatus() => _statusItem.Text = $"Status: {_host.Status}";
+    private void UpdateStatus()
+    {
+        _statusItem.Text = $"Status: {_host.Status}";
+        _notifyIcon.Text = $"HomeCursor - {_host.Status}";
+    }
 }
