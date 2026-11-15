@@ -84,14 +84,39 @@ public sealed class WindowsInputInjector : IInputInjector
 
     public void TypeText(string text)
     {
-        var inputs = new Input[text.Length * 2];
+        var inputs = new List<Input>(text.Length * 2);
         for (var i = 0; i < text.Length; i++)
         {
-            inputs[2 * i] = Keyboard(0, text[i], KeyEventUnicode);
-            inputs[(2 * i) + 1] = Keyboard(0, text[i], KeyEventUnicode | KeyEventKeyUp);
+            var c = text[i];
+            if (c == '\r' && i + 1 < text.Length && text[i + 1] == '\n')
+            {
+                continue; // CRLF is one Enter, sent for the '\n'
+            }
+
+            // Unicode events carry no virtual key, so line breaks and tabs must be real key presses.
+            if (c is '\r' or '\n')
+            {
+                AddKeyPress(inputs, SpecialKey.Enter);
+            }
+            else if (c == '\t')
+            {
+                AddKeyPress(inputs, SpecialKey.Tab);
+            }
+            else
+            {
+                inputs.Add(Keyboard(0, c, KeyEventUnicode));
+                inputs.Add(Keyboard(0, c, KeyEventUnicode | KeyEventKeyUp));
+            }
         }
 
-        Send(inputs);
+        Send([.. inputs]);
+    }
+
+    private static void AddKeyPress(List<Input> inputs, SpecialKey key)
+    {
+        var virtualKey = WindowsVirtualKeys.GetVirtualKey(key);
+        inputs.Add(Keyboard(virtualKey, 0, 0));
+        inputs.Add(Keyboard(virtualKey, 0, KeyEventKeyUp));
     }
 
     private void Send(params Input[] inputs)
