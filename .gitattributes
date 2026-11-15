@@ -1,0 +1,24 @@
+# Normalize line endings: LF in the repository and in working copies.
+* text=auto eol=lf
+
+# Windows-only scripts and solution files need CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sln text eol=crlf
+
+# Must stay LF or the shebang breaks on Linux/macOS.
+gradlew text eol=lf
+*.sh text eol=lf
+
+# Binary files.
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.jks binary
+*.keystore binary
+*.apk binary
+*.aab binary
