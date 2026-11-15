@@ -179,7 +179,7 @@ private fun ComposePanel(
                     text = ""
                 },
                 enabled = text.isNotEmpty(),
-                modifier = Modifier.fillMaxHeight().padding(vertical = Spacing.sm),
+                modifier = Modifier.padding(top = LABEL_OVERHANG).fillMaxHeight(),
             ) { Text(stringResource(R.string.keyboard_send)) }
         }
         Row(modifier = Modifier.fillMaxWidth().height(ACTION_ROW_HEIGHT), horizontalArrangement = Arrangement.spacedBy(KEY_GAP)) {

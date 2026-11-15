@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.animateColorAsState
@@ -30,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,6 +59,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.homecursor.client.R
 import com.homecursor.client.connection.HostEndpoint
@@ -99,11 +103,11 @@ fun TrackpadScreen(
         if (maxWidth > maxHeight) {
             Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 buttons(true)
-                PadWithSettings(onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxHeight())
+                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxHeight())
             }
         } else {
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                PadWithSettings(onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxWidth())
+                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxWidth())
                 buttons(false)
             }
         }
@@ -123,12 +127,13 @@ fun TrackpadScreen(
 }
 
 /**
- * The touch pad with the settings (gear) button in its upper right corner, away from the button strip (which is at
+ * The touch pad with the connection chip in its upper left corner and the settings (gear) button in its upper right corner, away from the button strip (which is at
  * the bottom in portrait and on the left in landscape). The gear sits on top of the pad, so touches on it open the
  * settings and never reach the pad.
  */
 @Composable
 private fun PadWithSettings(
+    host: HostEndpoint,
     onTouch: (Long, List<TouchPoint>) -> Unit,
     onTouchCancelled: () -> Unit,
     onSettings: () -> Unit,
@@ -136,11 +141,41 @@ private fun PadWithSettings(
 ) {
     Box(modifier = modifier) {
         TrackpadSurface(onTouch, onTouchCancelled, Modifier.fillMaxSize())
+        ConnectionChip(host.name, Modifier.align(Alignment.TopStart).padding(Spacing.md))
         IconButton(onClick = onSettings, modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs)) {
             Icon(
                 painterResource(R.drawable.ic_settings),
                 contentDescription = stringResource(R.string.menu),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * Shows which PC is controlled. It only draws: it has no pointer handling, so touches on it reach the pad below.
+ * Amber, like the "in use" badge, so connection state stands apart from the teal controls.
+ */
+@Composable
+private fun ConnectionChip(hostName: String, modifier: Modifier = Modifier) {
+    val description = stringResource(R.string.connected_to, hostName)
+    Surface(
+        modifier = modifier.widthIn(max = CHIP_MAX_WIDTH).semantics(mergeDescendants = true) { contentDescription = description },
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            Box(Modifier.size(CHIP_DOT_SIZE).background(MaterialTheme.colorScheme.tertiary, CircleShape))
+            Text(
+                hostName,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -194,6 +229,9 @@ private val KEYBOARD_BUTTON_SIZE = 56.dp
 /** Width of the strip in landscape and height of it in portrait. */
 private val STRIP_WIDTH = 120.dp
 private val STRIP_HEIGHT = 80.dp
+
+private val CHIP_MAX_WIDTH = 180.dp
+private val CHIP_DOT_SIZE = 8.dp
 
 @Composable
 private fun ButtonStrip(
