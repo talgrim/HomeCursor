@@ -25,9 +25,13 @@ Both devices must be on the same local network. No cloud, no account, no interne
 
 ```
 HomeCursor/
-├── host/     # C# host application (planned)
-├── client/   # Kotlin Android client (planned)
-├── docs/     # Protocol and design notes (planned)
+├── src/
+│   ├── host/                       # C# host (HomeCursor.Host.sln)
+│   │   ├── HomeCursor.Core/        # Host logic: networking, protocol, input injection
+│   │   ├── HomeCursor.Host.Tray/   # WinForms tray-only shell
+│   │   └── HomeCursor.Core.Tests/  # xUnit tests for Core
+│   └── client/                     # Kotlin Android client (planned)
+├── docs/                           # Protocol and design notes (planned)
 └── README.md
 ```
 
@@ -38,15 +42,15 @@ HomeCursor/
 Requirements: [.NET SDK](https://dotnet.microsoft.com/download) (version to be decided), Windows.
 
 ```bash
-cd host
-dotnet run
+cd src/host
+dotnet run --project HomeCursor.Host.Tray
 ```
 
 ### Client
 
 Requirements: [Android Studio](https://developer.android.com/studio), an Android device or emulator.
 
-Open the `client/` directory in Android Studio and run the app.
+Open the `src/client/` directory in Android Studio and run the app.
 
 ## Contributing
 
