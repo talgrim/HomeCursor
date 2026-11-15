@@ -1,8 +1,11 @@
 using HomeCursor.Core;
+using HomeCursor.Core.Input;
 using HomeCursor.Core.Settings;
 using HomeCursor.Host.Tray;
 using HomeCursor.Host.Windows;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 internal static class Program
 {
@@ -17,15 +20,15 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
 
-        using var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Debug).AddDebug());
+        var settingsPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "HomeCursor", "settings.json");
 
-        HostSettings settings;
+        using var provider = BuildServiceProvider(settingsPath);
+
         try
         {
-            var settingsPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "HomeCursor", "settings.json");
-            settings = new JsonFileSettingsProvider(
-                settingsPath, loggerFactory.CreateLogger<JsonFileSettingsProvider>()).Load();
+            // Resolve settings eagerly so a bad settings file is reported before anything starts.
+            _ = provider.GetRequiredService<IOptions<HostSettings>>().Value;
         }
         catch (SettingsException ex)
         {
@@ -33,9 +36,28 @@ internal static class Program
             return;
         }
 
-        var injector = new WindowsInputInjector(loggerFactory.CreateLogger<WindowsInputInjector>());
-        var host = HostServiceFactory.Create(settings, injector, loggerFactory);
+        Application.Run(provider.GetRequiredService<TrayApplicationContext>());
+    }
 
-        Application.Run(new TrayApplicationContext(host));
+    private static ServiceProvider BuildServiceProvider(string settingsPath)
+    {
+        var services = new ServiceCollection();
+
+        services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Debug).AddDebug());
+
+        services.AddSingleton<ISettingsProvider>(sp =>
+            new JsonFileSettingsProvider(settingsPath, sp.GetRequiredService<ILogger<JsonFileSettingsProvider>>()));
+        services.AddSingleton<IInputInjector, WindowsInputInjector>();
+        services.AddHomeCursorCore();
+
+        services.AddSingleton<TrayApplicationContext>();
+
+        return services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+#if DEBUG
+            ValidateOnBuild = true,
+#endif
+        });
     }
 }

@@ -6,6 +6,7 @@ using HomeCursor.Core.Settings;
 using HomeCursor.Protocol;
 using HomeCursor.Protocol.Messages;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace HomeCursor.Core.Networking;
 
@@ -22,13 +23,13 @@ public sealed class UdpPointerReceiver : HostLoopBase
     private UdpClient? _udp;
 
     public UdpPointerReceiver(
-        HostSettings settings,
+        IOptions<HostSettings> settings,
         ISessionGate gate,
         IMessageDispatcher dispatcher,
         ILogger<UdpPointerReceiver> logger)
         : base(logger)
     {
-        _settings = settings;
+        _settings = settings.Value;
         _gate = gate;
         _dispatcher = dispatcher;
         _logger = logger;
