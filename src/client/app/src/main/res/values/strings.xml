@@ -16,8 +16,8 @@
 
     <string name="left_button">Left</string>
     <string name="right_button">Right</string>
+    <string name="middle_button">Mid</string>
     <string name="menu">Menu</string>
-    <string name="keyboard_button">Keys</string>
     <string name="trackpad_description">Trackpad. Drag to move the pointer, tap to click, tap with two fingers to right-click, drag with two fingers to scroll.</string>
     <string name="pointer_speed">Pointer speed: %1$.1f×</string>
     <string name="natural_scroll">Natural scrolling</string>

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,14 +14,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -42,6 +47,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -54,10 +60,10 @@ import com.homecursor.client.storage.TrackpadSettings
 import kotlinx.coroutines.flow.Flow
 
 /**
- * The connected screen: a large touch pad with a strip of buttons (left click, right click, keyboard, menu) beside it. The
- * strip is at the bottom in portrait and at the side in landscape, so the pad keeps its width where the thumbs are.
- * The keyboard button opens the shortcuts or the on-screen keyboard (see [ConnectedScreen]); the menu opens the
- * settings and the disconnect actions.
+ * The connected screen: a large touch pad with a strip of buttons (left, middle and right button, keyboard) beside it. The
+ * strip is at the bottom in portrait and on the left in landscape, so the pad keeps its width where the thumbs are.
+ * The keyboard button opens the shortcuts or the on-screen keyboard (see [ConnectedScreen]); the gear in the upper
+ * right corner of the pad opens the settings and the disconnect actions.
  *
  * Stateless: it reports touches and button presses, and the view model decides what they mean.
  */
@@ -82,16 +88,16 @@ fun TrackpadScreen(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val buttons = @Composable { vertical: Boolean ->
-            ButtonStrip(vertical, onButtonPressed, onButtonReleased, onKeyboard, onMenu = { menuOpen = true })
+            ButtonStrip(vertical, onButtonPressed, onButtonReleased, onKeyboard)
         }
         if (maxWidth > maxHeight) {
             Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TrackpadSurface(onTouch, onTouchCancelled, Modifier.weight(1f).fillMaxHeight())
                 buttons(true)
+                PadWithSettings(onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxHeight())
             }
         } else {
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TrackpadSurface(onTouch, onTouchCancelled, Modifier.weight(1f).fillMaxWidth())
+                PadWithSettings(onTouch, onTouchCancelled, { menuOpen = true }, Modifier.weight(1f).fillMaxWidth())
                 buttons(false)
             }
         }
@@ -107,6 +113,30 @@ fun TrackpadScreen(
             onForget = onForget,
             onDismiss = { menuOpen = false },
         )
+    }
+}
+
+/**
+ * The touch pad with the settings (gear) button in its upper right corner, away from the button strip (which is at
+ * the bottom in portrait and on the left in landscape). The gear sits on top of the pad, so touches on it open the
+ * settings and never reach the pad.
+ */
+@Composable
+private fun PadWithSettings(
+    onTouch: (Long, List<TouchPoint>) -> Unit,
+    onTouchCancelled: () -> Unit,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier) {
+        TrackpadSurface(onTouch, onTouchCancelled, Modifier.fillMaxSize())
+        IconButton(onClick = onSettings, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+            Icon(
+                painterResource(R.drawable.ic_settings),
+                contentDescription = stringResource(R.string.menu),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -148,36 +178,45 @@ private fun TrackpadSurface(
     )
 }
 
+/** The middle button is used less than Left and Right, so it gets a smaller share of the strip. */
+private const val MIDDLE_BUTTON_WEIGHT = 0.6f
+
+/** The keyboard button is a small outlined square, so it is clear where it takes a tap. */
+private val KEYBOARD_BUTTON_SIZE = 56.dp
+
 @Composable
 private fun ButtonStrip(
     vertical: Boolean,
     onPressed: (MouseButton) -> Unit,
     onReleased: (MouseButton) -> Unit,
     onKeyboard: () -> Unit,
-    onMenu: () -> Unit,
 ) {
     val keyboard = @Composable { modifier: Modifier ->
-        TextButton(onClick = onKeyboard, modifier = modifier) { Text(stringResource(R.string.keyboard_button)) }
-    }
-    val menuDescription = stringResource(R.string.menu)
-    val menu = @Composable { modifier: Modifier ->
-        TextButton(onClick = onMenu, modifier = modifier.semantics { contentDescription = menuDescription }) {
-            Text("⋮", style = MaterialTheme.typography.headlineMedium)
+        OutlinedButton(onClick = onKeyboard, modifier = modifier.size(KEYBOARD_BUTTON_SIZE), contentPadding = PaddingValues(0.dp)) {
+            Icon(painterResource(R.drawable.ic_keyboard), contentDescription = stringResource(R.string.open_keyboard))
         }
     }
     if (vertical) {
-        Column(modifier = Modifier.width(120.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.width(120.dp).fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             PadButton(stringResource(R.string.left_button), MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
+            PadButton(stringResource(R.string.middle_button), MouseButton.Middle, onPressed, onReleased, Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxWidth())
             PadButton(stringResource(R.string.right_button), MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
-            keyboard(Modifier.fillMaxWidth())
-            menu(Modifier.fillMaxWidth())
+            keyboard(Modifier)
         }
     } else {
-        Row(modifier = Modifier.fillMaxWidth().height(80.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(80.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             PadButton(stringResource(R.string.left_button), MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
+            PadButton(stringResource(R.string.middle_button), MouseButton.Middle, onPressed, onReleased, Modifier.weight(MIDDLE_BUTTON_WEIGHT).fillMaxHeight())
             PadButton(stringResource(R.string.right_button), MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
-            keyboard(Modifier.fillMaxHeight())
-            menu(Modifier.fillMaxHeight())
+            keyboard(Modifier)
         }
     }
 }
