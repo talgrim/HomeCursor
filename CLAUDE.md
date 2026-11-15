@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-HomeCursor lets a phone control a PC's mouse and keyboard over the local network (no cloud, no accounts). Two parts: a **C# host** (Windows, in `src/host`) and a **Kotlin Android client** (Jetpack Compose, in `src/client`). The project is in early development: the host receives client messages and injects input (no pairing or encryption yet), while the client is still an empty Compose shell.
+HomeCursor lets a phone control a PC's mouse and keyboard over the local network (no cloud, no accounts). Two parts: a **C# host** (Windows, in `src/host`) and a **Kotlin Android client** (Jetpack Compose, in `src/client`). The project is in early development: the host receives client messages and injects input (no pairing or encryption yet), while the client can discover and connect to a host and remembers it, but has no touchpad or keyboard yet.
 
 ## Commands
 
@@ -28,6 +28,7 @@ The client is a Gradle project in `src/client` (AGP 9 with built-in Kotlin, vers
 - `HomeCursor.Host.Windows` implements `IInputInjector` with `SendInput`.
 - `HomeCursor.Host.Tray` is a thin tray-only WinForms shell (`ApplicationContext` + `NotifyIcon`, no main window). It composes the host in `Program.cs`, adds the Debug logger and only depends on Core abstractions, so Core can later be driven from a console app or tests. It is a normal user process on purpose: input injection must happen in the logged-in user's session, so a Windows Service (Session 0) is not suitable.
 - `HomeCursor.Protocol.Tests` and `HomeCursor.Core.Tests` are xUnit. Network tests use loopback sockets on free ports and hand-written fakes (no mocking library).
+- The Android client (`src/client/app/src/main/kotlin/com/homecursor/client`) is layered so everything except `ui` and the two small Android classes (`MainActivity`, `SharedPrefsSavedHostStore`) is plain Kotlin, testable on the JVM: `protocol` (Kotlin port of the wire protocol), `discovery` (`UdpHostDiscovery`: UDP broadcast probe, collects replies), `connection` (`TcpHostConnector`/`HostSession`: Hello/Welcome handshake, ping loop, dead-host detection), `storage` (`SavedHostStore`: last host), `session` (`ConnectionCoordinator`: connect to the saved host, find it again by name if its address changed, retry while the host answers Busy, reconnect after a lost connection), `ui` (`HomeViewModel` + Compose). The connection lives only while the app is in the foreground: `MainActivity` calls `onForeground` in `onStart` and closes the connection cleanly in `onStop` (except when `isChangingConfigurations`), so the host frees its single client slot at once. Tests use hand-written fakes and loopback sockets, no mocking library.
 
 ## Environment notes
 
