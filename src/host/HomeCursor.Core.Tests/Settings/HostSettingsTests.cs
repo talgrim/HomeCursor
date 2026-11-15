@@ -36,4 +36,16 @@ public class HostSettingsTests
     {
         new HostSettings { TcpPort = 6000, UdpPort = 6000 }.Validate();
     }
+
+    [Fact]
+    public void NotifyOnClientConnection_DefaultsToTrue()
+    {
+        Assert.True(new HostSettings().NotifyOnClientConnection);
+    }
+
+    [Fact]
+    public void NotifyOnClientDisconnection_DefaultsToTrue()
+    {
+        Assert.True(new HostSettings().NotifyOnClientDisconnection);
+    }
 }

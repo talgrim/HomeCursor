@@ -99,7 +99,7 @@ public sealed class UdpPointerReceiverTests : IAsyncLifetime
     {
         _gate.TryAcquire(IPAddress.Parse("10.1.2.3"), "elsewhere", out var other);
         await SendAsync(other!.SessionId, 1, new MouseMoveMessage(1, 1));
-        _gate.Release(other);
+        _gate.Release(other, SessionEndReason.ClientDisconnected);
         var session = AcquireLoopbackSession();
 
         await SendAsync(session.SessionId, 1, new MouseMoveMessage(2, 2));

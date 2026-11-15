@@ -28,6 +28,12 @@ public sealed record HostSettings
     /// <summary>A connected client that sends nothing for this long is dropped.</summary>
     public int HeartbeatTimeoutSeconds { get; init; } = 15;
 
+    /// <summary>Whether the host shows a notification when a client connects.</summary>
+    public bool NotifyOnClientConnection { get; init; } = true;
+
+    /// <summary>Whether the host shows a notification when a client disconnects.</summary>
+    public bool NotifyOnClientDisconnection { get; init; } = true;
+
     public IPAddress GetBindAddress() => IPAddress.Parse(BindAddress);
 
     public TimeSpan GetHeartbeatTimeout() => TimeSpan.FromSeconds(HeartbeatTimeoutSeconds);
