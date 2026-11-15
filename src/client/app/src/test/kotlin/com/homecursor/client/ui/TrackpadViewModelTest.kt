@@ -31,7 +31,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/** Slop 10 px, no acceleration unless a test asks for it, 3 scroll units per px, sending every 8 ms. */
+/**
+ * Slop 10 px, a tap clicks 300 ms after it (the double-tap window), no acceleration unless a test asks for it,
+ * a pointer speed scale of 1 unless a test asks for it, 3 scroll units per px, sending every 8 ms.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TrackpadViewModelTest {
     private val scheduler = TestCoroutineScheduler()
@@ -44,6 +47,7 @@ class TrackpadViewModelTest {
         acceleration = PointerAcceleration.Config(thresholdPxPerMs = 1_000f),
         scrollUnitsPerPixel = 3f,
         flushIntervalMillis = 8,
+        pointerSpeedScale = 1f,
     )
 
     @Before
@@ -69,6 +73,12 @@ class TrackpadViewModelTest {
     /** Lets one send interval pass. */
     private fun TestScope.tick() {
         advanceTimeBy(plainTuning.flushIntervalMillis)
+        runCurrent()
+    }
+
+    /** Lets the double-tap window pass, after which a tap that was not followed by a touch clicks. */
+    private fun TestScope.afterTapWindow() {
+        advanceTimeBy(plainTuning.gestures.doubleTapWindowMillis)
         runCurrent()
     }
 
@@ -153,6 +163,34 @@ class TrackpadViewModelTest {
     }
 
     @Test
+    fun move_defaultSensitivityIsHalfOfTheFingerTravel() = runTest(scheduler) {
+        val vm = viewModel(plainTuning.copy(pointerSpeedScale = 0.5f))
+
+        vm.touch(0, one(100f, 100f))
+        vm.touch(32, one(120f, 100f))
+        tick()
+
+        assertEquals(1f, vm.settings.value.sensitivity, 0f)
+        assertEquals(listOf(Move(10, 0)), sender.events)
+    }
+
+    @Test
+    fun move_speedSettingKeepsItsRangeOnTopOfTheScale() = runTest(scheduler) {
+        val vm = viewModel(plainTuning.copy(pointerSpeedScale = 0.5f))
+        vm.onSensitivityChanged(3f)
+        vm.touch(0, one(100f, 100f))
+        vm.touch(32, one(120f, 100f))
+        tick()
+
+        vm.onSensitivityChanged(0.5f)
+        vm.touch(48, one(140f, 100f))
+        tick()
+
+        // 20 px at 3x and half scale is 30; 20 px at 0.5x and half scale is 5.
+        assertEquals(listOf(Move(30, 0), Move(5, 0)), sender.events)
+    }
+
+    @Test
     fun move_sensitivityChangeAppliesToLaterMovement() = runTest(scheduler) {
         val vm = viewModel()
         vm.touch(0, one(100f, 100f))
@@ -169,13 +207,105 @@ class TrackpadViewModelTest {
     // --- clicks and drag ---
 
     @Test
-    fun tap_sendsLeftButtonDownAndUp() = runTest(scheduler) {
+    fun tap_sendsLeftButtonDownAndUpOnceTheDoubleTapWindowHasPassed() = runTest(scheduler) {
         val vm = viewModel()
 
         vm.touch(0, one(100f, 100f))
         vm.lift(100)
+        assertTrue(sender.events.isEmpty())
+        advanceTimeBy(plainTuning.gestures.doubleTapWindowMillis - 1)
+        runCurrent()
+        assertTrue(sender.events.isEmpty())
+
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(listOf(Button(MouseButton.Left, true), Button(MouseButton.Left, false)), sender.events)
+    }
+
+    @Test
+    fun tap_clicksOnlyOnce() = runTest(scheduler) {
+        val vm = viewModel()
+        vm.touch(0, one(100f, 100f))
+        vm.lift(100)
+
+        afterTapWindow()
+        afterTapWindow()
+
+        assertEquals(2, sender.events.size)
+    }
+
+    @Test
+    fun tapThenDrag_isASinglePressWithNoClick() = runTest(scheduler) {
+        val vm = viewModel()
+
+        vm.touch(0, one(100f, 100f))
+        vm.lift(50)
+        vm.touch(150, one(100f, 100f))
+        vm.touch(182, one(120f, 100f))
+        vm.lift(214)
+        afterTapWindow() // the waiting tap must not come back as a click once the drag is over
+
+        assertEquals(listOf(Button(MouseButton.Left, true), Move(20, 0), Button(MouseButton.Left, false)), sender.events)
+    }
+
+    @Test
+    fun tapThenSecondTap_isADoubleClickAtOnce() = runTest(scheduler) {
+        val vm = viewModel()
+        vm.touch(0, one(100f, 100f))
+        vm.lift(50)
+        vm.touch(150, one(100f, 100f))
+
+        vm.lift(200)
+
+        assertEquals(
+            listOf(
+                Button(MouseButton.Left, true), Button(MouseButton.Left, false),
+                Button(MouseButton.Left, true), Button(MouseButton.Left, false),
+            ),
+            sender.events,
+        )
+        afterTapWindow()
+        assertEquals(4, sender.events.size)
+    }
+
+    @Test
+    fun tapThenALateTouch_sendsTheClickBeforeTheNewGesture() = runTest(scheduler) {
+        val vm = viewModel()
+        vm.touch(0, one(100f, 100f))
+        vm.lift(50)
+
+        vm.touch(500, one(100f, 100f)) // event time says the window is over; the timer has not run yet
 
         assertEquals(listOf(Button(MouseButton.Left, true), Button(MouseButton.Left, false)), sender.events)
+        afterTapWindow()
+        assertEquals(2, sender.events.size)
+    }
+
+    @Test
+    fun tapThenTheAppGoesToTheBackground_theWaitingClickIsDropped() = runTest(scheduler) {
+        val vm = viewModel()
+        vm.touch(0, one(100f, 100f))
+        vm.lift(50)
+
+        vm.onBackground()
+        afterTapWindow()
+
+        assertTrue(sender.events.isEmpty())
+    }
+
+    @Test
+    fun tapThenTheConnectionChanges_theWaitingClickIsDropped() = runTest(scheduler) {
+        val vm = viewModel()
+        vm.touch(0, one(100f, 100f))
+        vm.lift(50)
+        val reconnected = FakeInputSender()
+
+        senders.value = reconnected
+        runCurrent()
+        afterTapWindow()
+
+        assertTrue(sender.events.isEmpty())
+        assertTrue(reconnected.events.isEmpty())
     }
 
     @Test
@@ -233,6 +363,7 @@ class TrackpadViewModelTest {
 
         vm.touch(0, one(100f, 100f))
         vm.lift(100)
+        afterTapWindow()
 
         assertEquals(1, feedback())
     }
@@ -287,6 +418,7 @@ class TrackpadViewModelTest {
             vm.touch(it * 1000L, one(100f, 100f))
             vm.lift(it * 1000L + 50)
         }
+        afterTapWindow()
 
         assertEquals(40, sender.events.size)
     }
@@ -450,6 +582,7 @@ class TrackpadViewModelTest {
 
         vm.touch(200, one(100f, 100f))
         vm.lift(250)
+        afterTapWindow()
 
         assertEquals(listOf(Button(MouseButton.Left, true), Button(MouseButton.Left, false)), sender.events)
     }
@@ -483,6 +616,7 @@ class TrackpadViewModelTest {
 
         vm.touch(0, one(100f, 100f))
         vm.lift(100)
+        afterTapWindow()
 
         assertTrue(sender.events.isEmpty())
         assertEquals(listOf(Button(MouseButton.Left, true), Button(MouseButton.Left, false)), reconnected.events)

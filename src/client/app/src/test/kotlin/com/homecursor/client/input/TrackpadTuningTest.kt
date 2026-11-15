@@ -50,6 +50,18 @@ class TrackpadTuningTest {
     }
 
     @Test
+    fun forDensity_pointerRunsAtHalfOfTheFingerTravelAtTheDefaultSpeedSetting() {
+        // The speed setting reads 1x at a comfortable speed; that speed is half of the finger's travel.
+        assertEquals(0.5f, TrackpadTuning.forDensity(1f).pointerSpeedScale, 0f)
+        assertEquals(0.5f, TrackpadTuning.forDensity(3f).pointerSpeedScale, 0f)
+    }
+
+    @Test
+    fun forDensity_tapWaitsAtMostAQuarterSecondForADrag() {
+        assertEquals(250L, TrackpadTuning.forDensity(2f).gestures.doubleTapWindowMillis)
+    }
+
+    @Test
     fun forDensity_nonPositive_throws() {
         assertThrows(IllegalArgumentException::class.java) { TrackpadTuning.forDensity(0f) }
         assertThrows(IllegalArgumentException::class.java) { TrackpadTuning.forDensity(-1f) }
@@ -61,5 +73,6 @@ class TrackpadTuningTest {
 
         assertThrows(IllegalArgumentException::class.java) { valid.copy(scrollUnitsPerPixel = 0f) }
         assertThrows(IllegalArgumentException::class.java) { valid.copy(flushIntervalMillis = 0) }
+        assertThrows(IllegalArgumentException::class.java) { valid.copy(pointerSpeedScale = 0f) }
     }
 }

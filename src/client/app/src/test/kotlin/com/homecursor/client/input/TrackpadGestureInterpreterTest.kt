@@ -7,6 +7,7 @@ import com.homecursor.client.input.PadCommand.Move
 import com.homecursor.client.input.PadCommand.Scroll
 import com.homecursor.client.protocol.MouseButton
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,30 +26,38 @@ class TrackpadGestureInterpreterTest {
 
     private fun lift(time: Long) = interpreter.onTouch(time, emptyList())
 
+    private fun flush() = interpreter.flushPendingClick()
+
     private val leftClick = Click(MouseButton.Left)
     private val rightClick = Click(MouseButton.Right)
 
     // --- one finger: tap ---
 
     @Test
-    fun touches_singleTap_emitsLeftClickOnRelease() {
+    fun touches_singleTap_holdsTheClickBackUntilTheWindowEnds() {
         assertTrue(touch(0, one(100f, 100f)).isEmpty())
 
-        assertEquals(listOf(leftClick), lift(100))
+        assertTrue(lift(100).isEmpty())
+        assertTrue(interpreter.hasPendingClick)
+        assertEquals(listOf(leftClick), flush())
+        assertFalse(interpreter.hasPendingClick)
+        assertTrue(flush().isEmpty())
     }
 
     @Test
     fun touches_tapReleasedAtTheTimeout_stillClicks() {
         touch(0, one(100f, 100f))
 
-        assertEquals(listOf(leftClick), lift(250))
+        assertTrue(lift(250).isEmpty())
+        assertEquals(listOf(leftClick), flush())
     }
 
     @Test
-    fun touches_longPress_emitsNothing() {
+    fun touches_longPress_isNotATap() {
         touch(0, one(100f, 100f))
 
         assertTrue(lift(251).isEmpty())
+        assertFalse(interpreter.hasPendingClick)
     }
 
     @Test
@@ -56,7 +65,13 @@ class TrackpadGestureInterpreterTest {
         touch(0, one(100f, 100f))
 
         assertTrue(touch(20, one(104f, 103f)).isEmpty())
-        assertEquals(listOf(leftClick), lift(80))
+        assertTrue(lift(80).isEmpty())
+        assertEquals(listOf(leftClick), flush())
+    }
+
+    @Test
+    fun flushPendingClick_withoutAWaitingTap_returnsNothing() {
+        assertTrue(flush().isEmpty())
     }
 
     // --- one finger: move ---
@@ -219,13 +234,68 @@ class TrackpadGestureInterpreterTest {
     @Test
     fun touches_tapThenTouchAndMove_dragsWithTheLeftButtonHeld() {
         touch(0, one(100f, 100f))
-        assertEquals(listOf(leftClick), lift(50))
+        assertTrue(lift(50).isEmpty())
 
         assertTrue(touch(150, one(100f, 100f)).isEmpty())
+        assertFalse(interpreter.hasPendingClick)
         assertTrue(touch(166, one(103f, 100f)).isEmpty())
         assertEquals(listOf(ButtonDown(MouseButton.Left), Move(20f, 0f, 32)), touch(182, one(120f, 100f)))
         assertEquals(listOf(Move(10f, 0f, 16)), touch(198, one(130f, 100f)))
         assertEquals(listOf(ButtonUp(MouseButton.Left)), lift(214))
+    }
+
+    @Test
+    fun touches_tapThenDrag_sendsASinglePressAndNoClick() {
+        // A click followed by a press at the same spot is a double click to Windows: it must never happen.
+        val all = listOf(
+            touch(0, one(100f, 100f)), lift(50),
+            touch(150, one(100f, 100f)), touch(182, one(120f, 100f)), touch(198, one(130f, 100f)), lift(214),
+            flush(),
+        ).flatten()
+
+        assertEquals(0, all.count { it is Click })
+        assertEquals(1, all.count { it == ButtonDown(MouseButton.Left) })
+        assertEquals(1, all.count { it == ButtonUp(MouseButton.Left) })
+    }
+
+    @Test
+    fun touches_tapThenPressAndHoldWithoutMoving_clicksOnce() {
+        touch(0, one(100f, 100f))
+        lift(50)
+        touch(150, one(100f, 100f))
+
+        // The tap was real, the hold after it is nothing: the click it owed is sent, and nothing else.
+        assertEquals(listOf(leftClick), lift(500))
+        assertFalse(interpreter.hasPendingClick)
+    }
+
+    @Test
+    fun touches_tapThenSecondFingerLands_sendsTheOwedClickFirst() {
+        touch(0, one(100f, 100f))
+        lift(50)
+        touch(150, one(100f, 100f))
+
+        assertEquals(listOf(leftClick), touch(160, one(100f, 100f), two(200f, 100f)))
+        assertEquals(listOf(rightClick), lift(200))
+    }
+
+    @Test
+    fun touches_tapThenTwoFingersTogether_sendsTheWaitingClick() {
+        touch(0, one(100f, 100f))
+        lift(50)
+
+        assertEquals(listOf(leftClick), touch(150, one(100f, 100f), two(200f, 100f)))
+        assertEquals(listOf(rightClick), lift(200))
+    }
+
+    @Test
+    fun touches_lateEmptyFrameAfterTheWindow_sendsTheWaitingClick() {
+        touch(0, one(100f, 100f))
+        lift(50)
+
+        assertTrue(lift(350).isEmpty()) // still within the 300 ms window
+        assertEquals(listOf(leftClick), lift(351))
+        assertFalse(interpreter.hasPendingClick)
     }
 
     @Test
@@ -238,21 +308,22 @@ class TrackpadGestureInterpreterTest {
     }
 
     @Test
-    fun touches_touchAfterTheWindow_isAnOrdinaryMove() {
+    fun touches_touchAfterTheWindow_sendsTheWaitingClickAndThenIsAnOrdinaryMove() {
         touch(0, one(100f, 100f))
         lift(50)
-        touch(351, one(100f, 100f)) // 301 ms after the tap
 
+        assertEquals(listOf(leftClick), touch(351, one(100f, 100f))) // 301 ms after the tap
         assertEquals(listOf(Move(20f, 0f, 32)), touch(383, one(120f, 100f)))
     }
 
     @Test
-    fun touches_tapThenSecondTapWithoutMoving_isASecondClick() {
+    fun touches_tapThenSecondTapWithoutMoving_isADoubleClick() {
         touch(0, one(100f, 100f))
-        assertEquals(listOf(leftClick), lift(50))
+        assertTrue(lift(50).isEmpty())
         touch(150, one(100f, 100f))
 
-        assertEquals(listOf(leftClick), lift(200))
+        assertEquals(listOf(leftClick, leftClick), lift(200))
+        assertFalse(interpreter.hasPendingClick)
     }
 
     @Test
@@ -300,7 +371,26 @@ class TrackpadGestureInterpreterTest {
         assertTrue(lift(64).isEmpty())
 
         touch(100, one(0f, 0f))
-        assertEquals(listOf(leftClick), lift(150))
+        lift(150)
+        assertEquals(listOf(leftClick), flush())
+    }
+
+    @Test
+    fun touches_thirdFingerWhileATapIsWaiting_sendsTheWaitingClick() {
+        touch(0, one(100f, 100f))
+        lift(50)
+
+        assertEquals(listOf(leftClick), touch(100, one(1f, 1f), two(2f, 2f), TouchPoint(3, 3f, 3f)))
+        assertTrue(lift(150).isEmpty())
+    }
+
+    @Test
+    fun touches_thirdFingerAfterATapThatIsNotMovingYet_sendsTheOwedClick() {
+        touch(0, one(100f, 100f))
+        lift(50)
+        touch(150, one(100f, 100f))
+
+        assertEquals(listOf(leftClick), touch(160, one(100f, 100f), two(200f, 100f), TouchPoint(3, 300f, 100f)))
     }
 
     @Test
@@ -341,10 +431,12 @@ class TrackpadGestureInterpreterTest {
     }
 
     @Test
-    fun cancel_forgetsAPendingTap_soTheNextTouchIsNotADrag() {
+    fun cancel_dropsAWaitingTap_soTheNextTouchIsNotADrag() {
         touch(0, one(100f, 100f))
         lift(50)
-        interpreter.cancel()
+
+        assertTrue(interpreter.cancel().isEmpty())
+        assertFalse(interpreter.hasPendingClick)
         touch(100, one(100f, 100f))
 
         assertEquals(listOf(Move(20f, 0f, 32)), touch(132, one(120f, 100f)))
@@ -356,6 +448,7 @@ class TrackpadGestureInterpreterTest {
         interpreter.cancel()
 
         assertTrue(lift(50).isEmpty())
+        assertFalse(interpreter.hasPendingClick)
     }
 
     @Test
@@ -366,7 +459,8 @@ class TrackpadGestureInterpreterTest {
         assertTrue(interpreter.cancel().isEmpty())
 
         touch(100, one(0f, 0f))
-        assertEquals(listOf(leftClick), lift(150))
+        lift(150)
+        assertEquals(listOf(leftClick), flush())
     }
 
     // --- misc ---
