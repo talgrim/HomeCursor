@@ -2,7 +2,9 @@ package com.homecursor.client.input
 
 import com.homecursor.client.connection.HostEndpoint
 import com.homecursor.client.protocol.MouseButton
+import com.homecursor.client.protocol.ProtocolConstants
 import com.homecursor.client.protocol.ProtocolMessage
+import com.homecursor.client.protocol.SpecialKey
 import com.homecursor.client.protocol.UdpPacket
 import com.homecursor.client.session.FakeSession
 import java.net.DatagramPacket
@@ -104,6 +106,44 @@ class TcpUdpInputSenderTest {
             session.sent,
         )
         assertNull(receive(200))
+    }
+
+    @Test
+    fun sendKeyAndText_goOverTcpInOrder() = runBlocking {
+        sender.sendKey(SpecialKey.Alt, true)
+        sender.sendKey(SpecialKey.Enter, true)
+        sender.sendText("hi")
+        awaitSent(3)
+
+        assertEquals(
+            listOf(
+                ProtocolMessage.Key(SpecialKey.Alt, true),
+                ProtocolMessage.Key(SpecialKey.Enter, true),
+                ProtocolMessage.Text("hi"),
+            ),
+            session.sent,
+        )
+        assertNull(receive(200))
+    }
+
+    @Test
+    fun sendText_longerThanTheLimit_isSentInPiecesThatJoinToTheOriginal() = runBlocking {
+        val text = "x".repeat(ProtocolConstants.MAX_STRING_BYTES * 2 + 10)
+        sender.sendText(text)
+        awaitSent(3)
+
+        val texts = session.sent.map { (it as ProtocolMessage.Text).text }
+        assertEquals(text, texts.joinToString(""))
+        assertTrue(texts.all { it.length <= ProtocolConstants.MAX_STRING_BYTES })
+    }
+
+    @Test
+    fun sendText_empty_sendsNothing() = runBlocking {
+        sender.sendText("")
+        sender.sendKey(SpecialKey.A, true)
+        awaitSent(1)
+
+        assertEquals(listOf<ProtocolMessage>(ProtocolMessage.Key(SpecialKey.A, true)), session.sent)
     }
 
     @Test

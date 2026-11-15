@@ -3,12 +3,14 @@ package com.homecursor.client.protocol
 import com.homecursor.client.protocol.ProtocolMessage.DiscoveryProbe
 import com.homecursor.client.protocol.ProtocolMessage.DiscoveryReply
 import com.homecursor.client.protocol.ProtocolMessage.Hello
+import com.homecursor.client.protocol.ProtocolMessage.Key
 import com.homecursor.client.protocol.ProtocolMessage.MouseButtonChange
 import com.homecursor.client.protocol.ProtocolMessage.MouseMove
 import com.homecursor.client.protocol.ProtocolMessage.Ping
 import com.homecursor.client.protocol.ProtocolMessage.Pong
 import com.homecursor.client.protocol.ProtocolMessage.Reject
 import com.homecursor.client.protocol.ProtocolMessage.Scroll
+import com.homecursor.client.protocol.ProtocolMessage.Text
 import com.homecursor.client.protocol.ProtocolMessage.Welcome
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -198,5 +200,49 @@ class MessageCodecTest {
     @Test
     fun encode_stringOverLimit_throws() {
         assertThrows(IllegalArgumentException::class.java) { MessageCodec.encode(Hello(1, "x".repeat(2049))) }
+    }
+
+    @Test
+    fun key_encodesToSpecBytes() {
+        assertArrayEquals(bytes(0x13, 0x11, 0x01), MessageCodec.encode(Key(SpecialKey.Alt, true)))
+        assertArrayEquals(bytes(0x13, 0x01, 0x00), MessageCodec.encode(Key(SpecialKey.Enter, false)))
+        assertArrayEquals(bytes(0x13, 0x43, 0x01), MessageCodec.encode(Key(SpecialKey.D, true)))
+    }
+
+    @Test
+    fun key_decodesFromSpecBytes() {
+        assertEquals(Key(SpecialKey.Space, true), MessageCodec.decode(bytes(0x13, 0x13, 0x01)))
+    }
+
+    @Test
+    fun key_everyKey_roundTrips() {
+        for (key in SpecialKey.entries) {
+            val message = Key(key, isDown = true)
+            assertEquals(message, MessageCodec.decode(MessageCodec.encode(message)))
+        }
+    }
+
+    @Test
+    fun decode_keyWithUnknownCode_throws() {
+        assertThrows(ProtocolException::class.java) { MessageCodec.decode(bytes(0x13, 0x63 + 40, 0x01)) }
+        assertThrows(ProtocolException::class.java) { MessageCodec.decode(bytes(0x13, 0x00, 0x01)) }
+    }
+
+    @Test
+    fun text_encodesToSpecBytes() {
+        assertArrayEquals(bytes(0x14, 0x03, 0x00, 0x61, 0xC5, 0xBC), MessageCodec.encode(Text("a\u017C")))
+    }
+
+    @Test
+    fun text_withEmoji_roundTrips() {
+        val message = Text("Za\u017C\u00F3\u0142\u0107 \uD83D\uDE42")
+        assertEquals(message, MessageCodec.decode(MessageCodec.encode(message)))
+    }
+
+    @Test
+    fun encode_textLongerThanLimit_throws() {
+        assertThrows(IllegalArgumentException::class.java) {
+            MessageCodec.encode(Text("a".repeat(ProtocolConstants.MAX_STRING_BYTES + 1)))
+        }
     }
 }
