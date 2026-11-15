@@ -15,9 +15,11 @@ import com.homecursor.client.storage.TrackpadSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -213,6 +215,80 @@ class TrackpadViewModelTest {
         vm.onTouchCancelled()
 
         assertEquals(listOf(Move(20, 0), Button(MouseButton.Left, false)), sender.events)
+    }
+
+    // --- haptic feedback ---
+
+    /** Counts feedback events while the test runs. */
+    private fun TestScope.countFeedback(vm: TrackpadViewModel): () -> Int {
+        var count = 0
+        backgroundScope.launch(UnconfinedTestDispatcher(scheduler)) { vm.clickFeedback.collect { count++ } }
+        return { count }
+    }
+
+    @Test
+    fun feedback_tap_givesOneFeedback() = runTest(scheduler) {
+        val vm = viewModel()
+        val feedback = countFeedback(vm)
+
+        vm.touch(0, one(100f, 100f))
+        vm.lift(100)
+
+        assertEquals(1, feedback())
+    }
+
+    @Test
+    fun feedback_dragStart_givesFeedbackWhenTheButtonGoesDown() = runTest(scheduler) {
+        val vm = viewModel()
+        vm.touch(0, one(100f, 100f))
+        vm.lift(50)
+        val feedback = countFeedback(vm)
+
+        vm.touch(150, one(100f, 100f))
+        assertEquals(0, feedback())
+        vm.touch(182, one(120f, 100f))
+        assertEquals(1, feedback())
+        vm.lift(214) // releasing is silent
+
+        assertEquals(1, feedback())
+    }
+
+    @Test
+    fun feedback_buttonBarPress_givesFeedbackButReleaseDoesNot() = runTest(scheduler) {
+        val vm = viewModel()
+        val feedback = countFeedback(vm)
+
+        vm.onButtonPressed(MouseButton.Left)
+        vm.onButtonReleased(MouseButton.Left)
+
+        assertEquals(1, feedback())
+    }
+
+    @Test
+    fun feedback_movingAndScrolling_isSilent() = runTest(scheduler) {
+        val vm = viewModel()
+        val feedback = countFeedback(vm)
+
+        vm.touch(0, one(100f, 100f))
+        vm.touch(32, one(120f, 100f))
+        vm.lift(60)
+        vm.touch(100, one(100f, 100f), two(200f, 100f))
+        vm.touch(132, one(100f, 130f), two(200f, 130f))
+        tick()
+
+        assertEquals(0, feedback())
+    }
+
+    @Test
+    fun feedback_withNobodyListening_doesNotBlockOrFail() = runTest(scheduler) {
+        val vm = viewModel()
+
+        repeat(20) {
+            vm.touch(it * 1000L, one(100f, 100f))
+            vm.lift(it * 1000L + 50)
+        }
+
+        assertEquals(40, sender.events.size)
     }
 
     // --- scrolling ---
