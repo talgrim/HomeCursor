@@ -30,7 +30,7 @@ HomeCursor/
 │   │   ├── HomeCursor.Core/        # Host logic: networking, protocol, input injection
 │   │   ├── HomeCursor.Host.Tray/   # WinForms tray-only shell
 │   │   └── HomeCursor.Core.Tests/  # xUnit tests for Core
-│   └── client/                     # Kotlin Android client (planned)
+│   └── client/                     # Kotlin + Jetpack Compose Android client (Gradle)
 ├── docs/                           # Protocol and design notes (planned)
 └── README.md
 ```
@@ -50,7 +50,12 @@ dotnet run --project HomeCursor.Host.Tray
 
 Requirements: [Android Studio](https://developer.android.com/studio), an Android device or emulator.
 
-Open the `src/client/` directory in Android Studio and run the app.
+Open the `src/client/` directory in Android Studio and run the app, or build from the command line:
+
+```bash
+cd src/client
+./gradlew assembleDebug   # gradlew.bat on Windows
+```
 
 ## Contributing
 

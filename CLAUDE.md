@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-HomeCursor lets a phone control a PC's mouse and keyboard over the local network (no cloud, no accounts). Two parts: a **C# host** (Windows, in `src/host`) and a **Kotlin Android client** (planned, `src/client`, not yet created). The project is in early development: `HostService` is a placeholder and there is no networking, protocol or input injection yet.
+HomeCursor lets a phone control a PC's mouse and keyboard over the local network (no cloud, no accounts). Two parts: a **C# host** (Windows, in `src/host`) and a **Kotlin Android client** (Jetpack Compose, in `src/client`). The project is in early development: `HostService` is a placeholder, the client is an empty Compose shell, and there is no networking, protocol or input injection yet.
 
 ## Commands
 
@@ -18,6 +18,8 @@ dotnet run --project HomeCursor.Host.Tray    # Windows only
 ```
 
 There is no lint step configured.
+
+The client is a Gradle project in `src/client` (AGP 9 with built-in Kotlin, version catalog in `gradle/libs.versions.toml`). From that directory: `./gradlew assembleDebug` to build, `./gradlew test` for unit tests. It needs a JDK and the Android SDK (`local.properties` with `sdk.dir` is gitignored). There is no Linux JDK in WSL; on this machine build via Windows using Android Studio's bundled JBR as `JAVA_HOME`, e.g. `cmd.exe /c gradlew.bat assembleDebug`.
 
 ## Architecture
 
