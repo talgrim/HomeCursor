@@ -8,18 +8,30 @@ import com.homecursor.client.connection.HostSession
 import com.homecursor.client.connection.SessionState
 import com.homecursor.client.discovery.DiscoveredHost
 import com.homecursor.client.discovery.HostDiscovery
+import com.homecursor.client.protocol.ProtocolMessage
 import com.homecursor.client.storage.SavedHostStore
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 
-class FakeSession(override val endpoint: HostEndpoint) : HostSession {
+class FakeSession(
+    override val endpoint: HostEndpoint,
+    override val udpPort: Int = endpoint.udpPort,
+) : HostSession {
     override val sessionId = 1L
     private val mutableState = MutableStateFlow<SessionState>(SessionState.Active)
     override val state: StateFlow<SessionState> = mutableState
     var closeCount = 0
         private set
+
+    /** Everything passed to [send], in order. Thread-safe: the sender delivers from another thread. */
+    val sent: MutableList<ProtocolMessage> = CopyOnWriteArrayList()
+
+    override fun send(message: ProtocolMessage) {
+        sent += message
+    }
 
     override fun close() {
         closeCount++
