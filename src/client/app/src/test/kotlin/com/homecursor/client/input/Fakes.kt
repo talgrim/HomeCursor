@@ -6,6 +6,7 @@ import com.homecursor.client.shortcuts.Shortcut
 import com.homecursor.client.storage.ShortcutStore
 import com.homecursor.client.storage.TrackpadSettings
 import com.homecursor.client.storage.TrackpadSettingsStore
+import com.homecursor.client.storage.TutorialStore
 
 /** Records what it was asked to send, in order. */
 class FakeInputSender : InputSender {
@@ -65,5 +66,13 @@ class FakeShortcutStore(var saved: List<Shortcut>? = null) : ShortcutStore {
     override fun save(shortcuts: List<Shortcut>) {
         saved = shortcuts
         saveCount++
+    }
+}
+
+class FakeTutorialStore(var seen: Boolean = false) : TutorialStore {
+    override fun isSeen() = seen
+
+    override fun markSeen() {
+        seen = true
     }
 }

@@ -24,6 +24,7 @@ fun HomeCursorApp(
     trackpadViewModel: TrackpadViewModel,
     keyboardViewModel: KeyboardViewModel,
     shortcutsViewModel: ShortcutsViewModel,
+    tutorialViewModel: TutorialViewModel,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     HomeCursorContent(
@@ -38,6 +39,7 @@ fun HomeCursorApp(
                 trackpadViewModel = trackpadViewModel,
                 keyboardViewModel = keyboardViewModel,
                 shortcutsViewModel = shortcutsViewModel,
+                tutorialViewModel = tutorialViewModel,
                 onDisconnect = viewModel::disconnect,
                 onForget = viewModel::forgetHost,
             )

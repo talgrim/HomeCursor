@@ -23,6 +23,34 @@
     <string name="natural_scroll">Natural scrolling</string>
     <string name="natural_scroll_summary">The page follows your fingers, like on a phone. Off, it scrolls like a mouse wheel.</string>
 
+    <string name="tutorial">Tutorial</string>
+    <string name="tutorial_summary">Take the guided tour of the trackpad again.</string>
+    <string name="tutorial_next">Next</string>
+    <string name="tutorial_back">Back</string>
+    <string name="tutorial_skip">Skip tour</string>
+    <string name="tutorial_done">Got it</string>
+    <string name="tutorial_progress">%1$d of %2$d</string>
+    <string name="tutorial_welcome_title">Welcome to HomeCursor</string>
+    <string name="tutorial_welcome_text">Your phone is now the mouse and keyboard of your PC. This short tour shows how it works. You can skip it now and replay it any time from the settings.</string>
+    <string name="tutorial_move_title">Move the pointer</string>
+    <string name="tutorial_move_text">Slide one finger on the pad, like on a laptop touchpad. The pointer follows.</string>
+    <string name="tutorial_tap_title">Click and drag</string>
+    <string name="tutorial_tap_text">Tap once to left-click, tap twice to double-click. To drag, tap and touch again right away, then move your finger.</string>
+    <string name="tutorial_right_click_title">Right-click</string>
+    <string name="tutorial_right_click_text">Tap with two fingers at once to right-click.</string>
+    <string name="tutorial_scroll_title">Scroll</string>
+    <string name="tutorial_scroll_text">Slide two fingers up or down to scroll, or sideways to scroll horizontally. You can reverse the direction with natural scrolling in the settings.</string>
+    <string name="tutorial_left_title">Left button</string>
+    <string name="tutorial_left_text">Works like the left button of a mouse. Hold it and slide a finger on the pad to select text or drag things.</string>
+    <string name="tutorial_middle_title">Middle button</string>
+    <string name="tutorial_middle_text">Works like the wheel click of a mouse, for example to open a link in a new tab or close a tab.</string>
+    <string name="tutorial_right_title">Right button</string>
+    <string name="tutorial_right_text">Works like the right button of a mouse. Tapping with two fingers on the pad does the same.</string>
+    <string name="tutorial_keyboard_title">Keyboard</string>
+    <string name="tutorial_keyboard_text">Held upright, it opens your shortcuts, such as Copy and Paste. Held sideways, it opens the full on-screen keyboard.</string>
+    <string name="tutorial_settings_title">Settings</string>
+    <string name="tutorial_settings_text">Change the pointer speed and the scroll direction, replay this tour, or disconnect from the PC.</string>
+
     <string name="shortcuts">Shortcuts</string>
     <string name="shortcuts_edit">Edit</string>
     <string name="shortcuts_done">Done</string>
