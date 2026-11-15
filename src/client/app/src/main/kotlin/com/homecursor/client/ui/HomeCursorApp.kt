@@ -44,7 +44,12 @@ import com.homecursor.client.session.ConnectionStatus
 
 /** Root composable: shows the connection progress, the trackpad, or the list of hosts to pick from. */
 @Composable
-fun HomeCursorApp(viewModel: HomeViewModel, trackpadViewModel: TrackpadViewModel) {
+fun HomeCursorApp(
+    viewModel: HomeViewModel,
+    trackpadViewModel: TrackpadViewModel,
+    keyboardViewModel: KeyboardViewModel,
+    shortcutsViewModel: ShortcutsViewModel,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     HomeCursorContent(
         state = state,
@@ -53,17 +58,11 @@ fun HomeCursorApp(viewModel: HomeViewModel, trackpadViewModel: TrackpadViewModel
         onManualConnect = viewModel::connectManually,
         onCancel = viewModel::cancelConnecting,
         connectedContent = { host ->
-            val settings by trackpadViewModel.settings.collectAsStateWithLifecycle()
-            TrackpadScreen(
+            ConnectedScreen(
                 host = host,
-                settings = settings,
-                clickFeedback = trackpadViewModel.clickFeedback,
-                onTouch = trackpadViewModel::onTouch,
-                onTouchCancelled = trackpadViewModel::onTouchCancelled,
-                onButtonPressed = trackpadViewModel::onButtonPressed,
-                onButtonReleased = trackpadViewModel::onButtonReleased,
-                onSensitivityChanged = trackpadViewModel::onSensitivityChanged,
-                onNaturalScrollChanged = trackpadViewModel::onNaturalScrollChanged,
+                trackpadViewModel = trackpadViewModel,
+                keyboardViewModel = keyboardViewModel,
+                shortcutsViewModel = shortcutsViewModel,
                 onDisconnect = viewModel::disconnect,
                 onForget = viewModel::forgetHost,
             )

@@ -17,10 +17,29 @@
     <string name="left_button">Left</string>
     <string name="right_button">Right</string>
     <string name="menu">Menu</string>
+    <string name="keyboard_button">Keys</string>
     <string name="trackpad_description">Trackpad. Drag to move the pointer, tap to click, tap with two fingers to right-click, drag with two fingers to scroll.</string>
     <string name="pointer_speed">Pointer speed: %1$.1f×</string>
     <string name="natural_scroll">Natural scrolling</string>
     <string name="natural_scroll_summary">The page follows your fingers, like on a phone. Off, it scrolls like a mouse wheel.</string>
+
+    <string name="shortcuts">Shortcuts</string>
+    <string name="shortcuts_edit">Edit</string>
+    <string name="shortcuts_done">Done</string>
+    <string name="shortcuts_restore_defaults">Restore default shortcuts</string>
+    <string name="open_keyboard">Open keyboard</string>
+    <string name="shortcut_add">Add shortcut</string>
+    <string name="shortcut_edit">Edit shortcut</string>
+    <string name="shortcut_delete">Delete</string>
+    <string name="shortcut_name">Name</string>
+    <string name="shortcut_pick_keys">Pick the keys, for example Alt and Enter</string>
+    <string name="shortcut_save">Save</string>
+
+    <string name="keyboard_mode_keys">Keys</string>
+    <string name="keyboard_mode_text">Text</string>
+    <string name="keyboard_close">Close</string>
+    <string name="keyboard_text_hint">Text to send to the PC</string>
+    <string name="keyboard_send">Send</string>
 
     <string name="hosts_on_network">PCs on this network</string>
     <string name="no_hosts_found">No PC found. Make sure HomeCursor is running on it and that both are on the same network, or enter its address below.</string>
