@@ -10,10 +10,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly IHostService _host;
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _statusItem;
+    private readonly SynchronizationContext _uiContext;
 
     public TrayApplicationContext(IHostService host)
     {
         _host = host;
+        _uiContext = new WindowsFormsSynchronizationContext();
 
         _statusItem = new ToolStripMenuItem { Enabled = false };
         var exitItem = new ToolStripMenuItem("Exit", image: null, (_, _) => ExitThread());
@@ -29,18 +31,41 @@ internal sealed class TrayApplicationContext : ApplicationContext
             Visible = true
         };
 
-        _host.StatusChanged += (_, _) => UpdateStatus();
+        // The host raises StatusChanged from background threads; WinForms controls must be touched on the UI thread.
+        _host.StatusChanged += (_, _) => _uiContext.Post(_ => UpdateStatus(), null);
         UpdateStatus();
 
-        _ = _host.StartAsync();
+        _ = StartHostAsync();
     }
 
     protected override void ExitThreadCore()
     {
-        _host.StopAsync().GetAwaiter().GetResult();
+        // Run on the thread pool so the blocking wait can never deadlock against the UI thread.
+        Task.Run(() => _host.StopAsync()).GetAwaiter().GetResult();
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
         base.ExitThreadCore();
+    }
+
+    private async Task StartHostAsync()
+    {
+        try
+        {
+            await _host.StartAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _uiContext.Post(_ => ShowStartError(ex), null);
+        }
+    }
+
+    private void ShowStartError(Exception exception)
+    {
+        _notifyIcon.ShowBalloonTip(
+            timeout: 10_000,
+            tipTitle: "HomeCursor could not start",
+            tipText: exception.Message,
+            tipIcon: ToolTipIcon.Error);
     }
 
     private void UpdateStatus()

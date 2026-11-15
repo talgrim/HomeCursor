@@ -3,5 +3,7 @@ namespace HomeCursor.Core;
 public enum HostStatus
 {
     Stopped,
-    Running
+    Running,
+    Starting,
+    Faulted
 }

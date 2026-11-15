@@ -11,7 +11,7 @@ HomeCursor is made of two parts:
 
 Both devices must be on the same local network. No cloud, no account, no internet connection is required.
 
-> **Status:** early development. Nothing is implemented yet.
+> **Status:** early development. The host can receive messages from a client on the local network and inject mouse and keyboard input (see [docs/protocol.md](docs/protocol.md)); the Android client is not implemented yet. The connection is **not authenticated or encrypted** yet, so use it only on networks you trust.
 
 ## Planned features
 
@@ -27,11 +27,13 @@ Both devices must be on the same local network. No cloud, no account, no interne
 HomeCursor/
 ├── src/
 │   ├── host/                       # C# host (HomeCursor.Host.sln)
-│   │   ├── HomeCursor.Core/        # Host logic: networking, protocol, input injection
+│   │   ├── HomeCursor.Protocol/    # Wire protocol: messages and binary codec
+│   │   ├── HomeCursor.Core/        # Host logic: networking loops, sessions, settings, input dispatch
+│   │   ├── HomeCursor.Host.Windows/ # Windows input injection (SendInput)
 │   │   ├── HomeCursor.Host.Tray/   # WinForms tray-only shell
-│   │   └── HomeCursor.Core.Tests/  # xUnit tests for Core
+│   │   └── *.Tests/                # xUnit tests for Protocol and Core
 │   └── client/                     # Kotlin + Jetpack Compose Android client (Gradle)
-├── docs/                           # Protocol and design notes (planned)
+├── docs/                           # Protocol specification (protocol.md)
 └── README.md
 ```
 
