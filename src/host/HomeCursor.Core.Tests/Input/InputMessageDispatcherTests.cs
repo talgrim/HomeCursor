@@ -33,6 +33,15 @@ public class InputMessageDispatcherTests
     }
 
     [Fact]
+    public void Dispatch_MiddleMouseButton_SetsMiddleButton()
+    {
+        _dispatcher.Dispatch(new MouseButtonMessage(MouseButton.Middle, true));
+        _dispatcher.Dispatch(new MouseButtonMessage(MouseButton.Middle, false));
+
+        Assert.Equal(["Button(Middle,True)", "Button(Middle,False)"], _injector.Calls);
+    }
+
+    [Fact]
     public void Dispatch_Scroll_Scrolls()
     {
         _dispatcher.Dispatch(new ScrollMessage(-120, 240));
@@ -83,6 +92,16 @@ public class InputMessageDispatcherTests
 
         Assert.Contains("Button(Left,False)", _injector.Calls);
         Assert.Contains("Key(Shift,False)", _injector.Calls);
+    }
+
+    [Fact]
+    public void ReleaseAll_ReleasesMiddleButtonStillHeld()
+    {
+        _dispatcher.Dispatch(new MouseButtonMessage(MouseButton.Middle, true));
+
+        _dispatcher.ReleaseAll();
+
+        Assert.Contains("Button(Middle,False)", _injector.Calls);
     }
 
     [Fact]

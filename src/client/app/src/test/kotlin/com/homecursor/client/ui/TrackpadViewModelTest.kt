@@ -501,6 +501,16 @@ class TrackpadViewModelTest {
     }
 
     @Test
+    fun buttonBar_middlePressAndRelease_sendDownThenUp() = runTest(scheduler) {
+        val vm = viewModel()
+
+        vm.onButtonPressed(MouseButton.Middle)
+        vm.onButtonReleased(MouseButton.Middle)
+
+        assertEquals(listOf(Button(MouseButton.Middle, true), Button(MouseButton.Middle, false)), sender.events)
+    }
+
+    @Test
     fun buttonBar_press_sendsPendingMovementFirst() = runTest(scheduler) {
         val vm = viewModel()
         vm.touch(0, one(100f, 100f))
