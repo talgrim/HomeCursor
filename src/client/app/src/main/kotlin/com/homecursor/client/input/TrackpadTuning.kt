@@ -12,16 +12,31 @@ data class TrackpadTuning(
     val scrollUnitsPerPixel: Float,
     /** Pointer and scroll motion is sent at most once per this many milliseconds. */
     val flushIntervalMillis: Long,
+    /**
+     * Multiplies the pointer speed setting to get the real factor, so the setting reads 1× at a comfortable speed
+     * and keeps its 0.5× to 3× range: at the default [TrackpadSettings.DEFAULT_SENSITIVITY] the pointer moves
+     * [pointerSpeedScale] times the finger's travel.
+     */
+    val pointerSpeedScale: Float = DEFAULT_POINTER_SPEED_SCALE,
 ) {
     init {
         require(scrollUnitsPerPixel > 0f) { "scrollUnitsPerPixel must be positive." }
         require(flushIntervalMillis > 0) { "flushIntervalMillis must be positive." }
+        require(pointerSpeedScale > 0f) { "pointerSpeedScale must be positive." }
     }
 
     companion object {
         private const val TOUCH_SLOP_DP = 6f
         private const val TAP_TIMEOUT_MILLIS = 250L
-        private const val DOUBLE_TAP_WINDOW_MILLIS = 300L
+
+        /**
+         * How long a tap waits for the finger to come back and drag. This is also how late a lone tap clicks, so it
+         * is a trade: shorter feels snappier, longer gives more time to start a drag.
+         */
+        private const val DOUBLE_TAP_WINDOW_MILLIS = 250L
+
+        /** Measured on a phone: the former top-end default (a factor of 1) was too fast, half of it felt right. */
+        private const val DEFAULT_POINTER_SPEED_SCALE = 0.5f
 
         /** Below this finger speed the pointer follows the finger 1:1. */
         private const val ACCELERATION_THRESHOLD_DP_PER_MS = 0.15f
@@ -52,6 +67,7 @@ data class TrackpadTuning(
                 ),
                 scrollUnitsPerPixel = UNITS_PER_NOTCH / (SCROLL_DP_PER_NOTCH * density),
                 flushIntervalMillis = FLUSH_INTERVAL_MILLIS,
+                pointerSpeedScale = DEFAULT_POINTER_SPEED_SCALE,
             )
         }
     }

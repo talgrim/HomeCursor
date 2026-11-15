@@ -50,6 +50,9 @@ class TrackpadViewModel(
     private val heldBarButtons = mutableSetOf<MouseButton>()
     private var flushJob: Job? = null
 
+    /** Sends the click of a tap once the double-tap window has passed without the finger coming back. */
+    private var pendingClickJob: Job? = null
+
     private val mutableSettings = MutableStateFlow(settingsStore.load())
     val settings: StateFlow<TrackpadSettings> = mutableSettings.asStateFlow()
 
@@ -66,10 +69,16 @@ class TrackpadViewModel(
     }
 
     /** Reports every finger on the pad at [timeMillis] (a monotonic clock, in ms). An empty list means all lifted. */
-    fun onTouch(timeMillis: Long, pointers: List<TouchPoint>) = handle(interpreter.onTouch(timeMillis, pointers))
+    fun onTouch(timeMillis: Long, pointers: List<TouchPoint>) {
+        handle(interpreter.onTouch(timeMillis, pointers))
+        syncPendingClickTimer()
+    }
 
     /** The system took the touches away. A held drag button is released, no click is sent. */
-    fun onTouchCancelled() = handle(interpreter.cancel())
+    fun onTouchCancelled() {
+        handle(interpreter.cancel())
+        syncPendingClickTimer()
+    }
 
     /** A button of the button bar went down. */
     fun onButtonPressed(button: MouseButton) {
@@ -109,7 +118,8 @@ class TrackpadViewModel(
         for (command in commands) {
             when (command) {
                 is PadCommand.Move -> {
-                    val factor = acceleration.gain(command.dx, command.dy, command.elapsedMillis) * settings.value.sensitivity
+                    val factor = acceleration.gain(command.dx, command.dy, command.elapsedMillis) *
+                        settings.value.sensitivity * tuning.pointerSpeedScale
                     pointerMotion.add(command.dx * factor, command.dy * factor)
                     scheduleFlush()
                 }
@@ -147,6 +157,24 @@ class TrackpadViewModel(
         return sign * travel * tuning.scrollUnitsPerPixel
     }
 
+    /**
+     * A tap's click is held back by the interpreter to see whether a drag follows. Without a further touch nothing
+     * would ever tell it the wait is over, so this timer does, after the double-tap window. A touch that arrives
+     * first settles the click itself, and then the timer is not needed any more.
+     */
+    private fun syncPendingClickTimer() {
+        if (!interpreter.hasPendingClick) {
+            pendingClickJob?.cancel()
+            pendingClickJob = null
+            return
+        }
+        if (pendingClickJob?.isActive == true) return
+        pendingClickJob = viewModelScope.launch {
+            delay(tuning.gestures.doubleTapWindowMillis)
+            handle(interpreter.flushPendingClick())
+        }
+    }
+
     private fun scheduleFlush() {
         if (flushJob?.isActive == true) return
         flushJob = viewModelScope.launch {
@@ -166,6 +194,8 @@ class TrackpadViewModel(
     private fun forgetGesture() {
         flushJob?.cancel()
         flushJob = null
+        pendingClickJob?.cancel()
+        pendingClickJob = null
         interpreter.cancel()
         pointerMotion.reset()
         scrollMotion.reset()

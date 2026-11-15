@@ -10,11 +10,18 @@ import kotlin.math.hypot
  * | Gesture | Result |
  * |---|---|
  * | One finger moves | [PadCommand.Move] |
- * | One finger taps | left [PadCommand.Click] |
- * | Two fingers tap | right [PadCommand.Click] |
+ * | One finger taps | left [PadCommand.Click], sent once the double-tap window has passed (see below) |
+ * | Two fingers tap | right [PadCommand.Click] at once |
  * | Two fingers move | [PadCommand.Scroll] |
  * | Tap, then touch again and move | [PadCommand.ButtonDown] for the left button, moves, [PadCommand.ButtonUp] on release |
- * | Tap, then tap again quickly | a second left click (a double click) |
+ * | Tap, then tap again quickly | two left clicks (a double click) |
+ *
+ * **Why a tap does not click at once.** If the click of the first tap were sent immediately, the button press that
+ * starts a drag would be a second press at the same spot a moment later, which Windows treats as a double click (it
+ * maximises a window whose title bar you tried to drag). So a tap waits: if the finger comes back within the
+ * double-tap window and moves, the tap is absorbed and the host sees one press, a plain drag. Otherwise the click is
+ * sent when the window ends: the caller must call [flushPendingClick] then (see [hasPendingClick]), or it is sent
+ * with the next touch.
  *
  * Rules that keep gestures from bleeding into each other:
  * - Nothing moves until the finger travelled more than the touch slop, so a tap never nudges the pointer. The first
@@ -32,7 +39,7 @@ class TrackpadGestureInterpreter(private val config: Config = Config()) {
     data class Config(
         val touchSlop: Float = 10f,
         val tapTimeoutMillis: Long = 250L,
-        val doubleTapWindowMillis: Long = 300L,
+        val doubleTapWindowMillis: Long = 250L,
     ) {
         init {
             require(touchSlop >= 0f) { "touchSlop must not be negative." }
@@ -46,8 +53,12 @@ class TrackpadGestureInterpreter(private val config: Config = Config()) {
         /** The gesture ended early (third finger); ignore touches until every finger is lifted. */
         data object WaitForRelease : State
 
-        /** One finger is down. [startsDrag] is set when it came down shortly after a tap. */
-        class OneFinger(val startsDrag: Boolean, val downTime: Long, val start: Position) : State {
+        /**
+         * One finger is down. [followsTap] is set when it came down within the double-tap window of a tap: that tap's
+         * click is then owed, and is either absorbed (this finger starts a drag), or sent when this finger turns
+         * out to be a second tap, a long press, or a part of another gesture.
+         */
+        class OneFinger(val followsTap: Boolean, val downTime: Long, val start: Position) : State {
             var last = start
             var lastTime = downTime
             var moving = false
@@ -65,8 +76,14 @@ class TrackpadGestureInterpreter(private val config: Config = Config()) {
 
     private var state: State = State.Idle
 
-    /** When the last tap was lifted, or null if the last gesture was not a tap that could start a drag. */
-    private var lastTapTime: Long? = null
+    /** When a tap was lifted whose left click has not been sent yet, or null. */
+    private var pendingTapTime: Long? = null
+
+    /**
+     * True while a tap's left click is held back. The caller should wait the double-tap window from the moment this
+     * turns true, and then call [flushPendingClick] unless a touch arrived meanwhile (which settles the click itself).
+     */
+    val hasPendingClick: Boolean get() = pendingTapTime != null
 
     /**
      * Reports the fingers on the pad at [timeMillis]: every finger that is down, including ones that did not move.
@@ -79,7 +96,7 @@ class TrackpadGestureInterpreter(private val config: Config = Config()) {
             return commands
         }
         when (val current = state) {
-            State.Idle -> begin(timeMillis, pointers)
+            State.Idle -> begin(timeMillis, pointers, commands)
             State.WaitForRelease -> if (pointers.isEmpty()) state = State.Idle
             is State.OneFinger -> continueOneFinger(current, timeMillis, pointers, commands)
             is State.TwoFingers -> continueTwoFingers(current, timeMillis, pointers, commands)
@@ -87,28 +104,46 @@ class TrackpadGestureInterpreter(private val config: Config = Config()) {
         return commands
     }
 
+    /** The double-tap window ended without a touch: sends the click of the tap that was waiting, if any. */
+    fun flushPendingClick(): List<PadCommand> {
+        if (pendingTapTime == null) return emptyList()
+        pendingTapTime = null
+        return listOf(PadCommand.Click(MouseButton.Left))
+    }
+
     /**
      * The system took the touches away (or the screen is going away). Releases a held button and forgets the
-     * gesture; no click is sent for it.
+     * gesture; no click is sent for it, not even for a tap that was waiting.
      */
     fun cancel(): List<PadCommand> {
         val commands = mutableListOf<PadCommand>()
         releaseHeldButton(commands)
         state = State.Idle
-        lastTapTime = null
+        pendingTapTime = null
         return commands
     }
 
-    private fun begin(time: Long, pointers: List<TouchPoint>) {
+    private fun begin(time: Long, pointers: List<TouchPoint>, out: MutableList<PadCommand>) {
+        val tapTime = pendingTapTime
+        val withinWindow = tapTime != null && time - tapTime <= config.doubleTapWindowMillis
         when (pointers.size) {
-            0 -> Unit
-            1 -> {
-                val startsDrag = lastTapTime?.let { time - it <= config.doubleTapWindowMillis } == true
-                state = State.OneFinger(startsDrag, time, pointers[0].position())
+            0 -> {
+                // A late frame (the caller's timer did not fire yet): the window is over, so the click is due.
+                if (tapTime != null && !withinWindow) out += flushPendingClick()
+                return
             }
-            else -> state = State.TwoFingers(time, centroid(pointers), canTap = true)
+            1 -> {
+                if (tapTime != null && !withinWindow) out += flushPendingClick()
+                state = State.OneFinger(followsTap = withinWindow, downTime = time, start = pointers[0].position())
+            }
+            else -> {
+                // Two fingers right away: whatever tap was waiting is not going to be part of a drag.
+                out += flushPendingClick()
+                state = State.TwoFingers(time, centroid(pointers), canTap = true)
+            }
         }
-        if (pointers.isNotEmpty()) lastTapTime = null
+        // The waiting tap is now owed by the finger above (followsTap) or was just sent.
+        pendingTapTime = null
     }
 
     private fun continueOneFinger(finger: State.OneFinger, time: Long, pointers: List<TouchPoint>, out: MutableList<PadCommand>) {
@@ -116,16 +151,23 @@ class TrackpadGestureInterpreter(private val config: Config = Config()) {
             0 -> {
                 if (finger.buttonHeld) {
                     out += PadCommand.ButtonUp(MouseButton.Left)
-                } else if (!finger.moving && time - finger.downTime <= config.tapTimeoutMillis) {
-                    out += PadCommand.Click(MouseButton.Left)
-                    // A tap that was itself the second one does not chain into a third.
-                    lastTapTime = if (finger.startsDrag) null else time
+                } else if (!finger.moving) {
+                    val isTap = time - finger.downTime <= config.tapTimeoutMillis
+                    when {
+                        // The second tap of a double click: both clicks now. A third tap starts over.
+                        finger.followsTap && isTap -> out += listOf(leftClick, leftClick)
+                        // Pressed and held after a tap, not moving: the tap's click was owed, the hold is nothing.
+                        finger.followsTap -> out += leftClick
+                        // A first tap: its click waits, to see whether the finger comes back to drag.
+                        isTap -> pendingTapTime = time
+                    }
                 }
                 state = State.Idle
             }
             1 -> moveOneFinger(finger, time, pointers[0].position(), out)
             else -> {
                 releaseHeldButton(out)
+                owedClick(finger, out)
                 // Whatever the first finger did, it is no tap any more once a second one joined.
                 state = State.TwoFingers(finger.downTime, centroid(pointers), canTap = !finger.moving)
             }
@@ -136,7 +178,8 @@ class TrackpadGestureInterpreter(private val config: Config = Config()) {
         if (!finger.moving) {
             if (distance(position, finger.start) <= config.touchSlop) return
             finger.moving = true
-            if (finger.startsDrag) {
+            // The tap that came before is absorbed: the drag is a single press, not a second one.
+            if (finger.followsTap) {
                 finger.buttonHeld = true
                 out += PadCommand.ButtonDown(MouseButton.Left)
             }
@@ -171,9 +214,17 @@ class TrackpadGestureInterpreter(private val config: Config = Config()) {
     }
 
     private fun endGesture(out: MutableList<PadCommand>) {
+        val current = state
         releaseHeldButton(out)
+        if (current is State.OneFinger) owedClick(current, out)
+        // A tap that was still waiting was a real tap; the extra fingers do not undo it.
+        out += flushPendingClick()
         state = State.WaitForRelease
-        lastTapTime = null
+    }
+
+    /** The click of a tap that this finger followed and did not turn into a drag (it has not moved). */
+    private fun owedClick(finger: State.OneFinger, out: MutableList<PadCommand>) {
+        if (finger.followsTap && !finger.moving) out += leftClick
     }
 
     private fun releaseHeldButton(out: MutableList<PadCommand>) {
@@ -190,6 +241,8 @@ class TrackpadGestureInterpreter(private val config: Config = Config()) {
         Position(pointers.map { it.x }.average().toFloat(), pointers.map { it.y }.average().toFloat())
 
     private fun distance(a: Position, b: Position) = hypot(a.x - b.x, a.y - b.y)
+
+    private val leftClick = PadCommand.Click(MouseButton.Left)
 
     private companion object {
         const val MAX_FINGERS = 2
