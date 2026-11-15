@@ -26,9 +26,13 @@ public sealed class TcpControlListenerTests : IAsyncLifetime
     private readonly RecordingDispatcher _dispatcher = new();
     private readonly TcpControlListener _listener;
     private readonly List<TestTcpClient> _clients = [];
+    private readonly List<ClientSession> _started = [];
+    private readonly List<SessionEndedEventArgs> _ended = [];
 
     public TcpControlListenerTests()
     {
+        _gate.SessionStarted += (_, session) => { lock (_started) { _started.Add(session); } };
+        _gate.SessionEnded += (_, args) => { lock (_ended) { _ended.Add(args); } };
         _listener = new TcpControlListener(Options.Create(_settings), _gate, _dispatcher, NullLogger<TcpControlListener>.Instance);
     }
 
@@ -233,5 +237,99 @@ public sealed class TcpControlListenerTests : IAsyncLifetime
 
         Assert.Null(await client.ReceiveAsync());
         Assert.False(_gate.IsBusy);
+    }
+
+    private async Task<SessionEndedEventArgs> NextEndedAsync()
+    {
+        await Wait.UntilAsync(() => { lock (_ended) { return _ended.Count > 0; } });
+        lock (_ended)
+        {
+            return Assert.Single(_ended);
+        }
+    }
+
+    [Fact]
+    public async Task Handshake_RaisesSessionStartedWithClientName()
+    {
+        var client = await ConnectAsync();
+
+        await client.HandshakeAsync("Pixel 7");
+
+        ClientSession started;
+        lock (_started)
+        {
+            started = Assert.Single(_started);
+        }
+
+        Assert.Equal("Pixel 7", started.ClientName);
+        Assert.Same(started, _gate.Current);
+    }
+
+    [Fact]
+    public async Task BusyRejection_DoesNotRaiseSessionEvents()
+    {
+        var first = await ConnectAsync();
+        await first.HandshakeAsync("first");
+        var second = await ConnectAsync();
+        await second.SendAsync(new HelloMessage(ProtocolDefaults.Version, "second"));
+        await second.ReceiveAsync();
+        await second.ReceiveAsync();
+
+        lock (_started)
+        {
+            Assert.Single(_started);
+        }
+
+        lock (_ended)
+        {
+            Assert.Empty(_ended);
+        }
+    }
+
+    [Fact]
+    public async Task ClientDroppingConnection_EndsSessionAsConnectionLostOrDisconnected()
+    {
+        var client = await ConnectAsync();
+        await client.HandshakeAsync();
+
+        client.Dispose();
+
+        var ended = await NextEndedAsync();
+        Assert.Contains(ended.Reason, new[] { SessionEndReason.ClientDisconnected, SessionEndReason.ConnectionLost });
+    }
+
+    [Fact]
+    public async Task SilentClient_EndsSessionAsTimedOut()
+    {
+        var client = await ConnectAsync();
+        await client.HandshakeAsync();
+
+        var ended = await NextEndedAsync();
+
+        Assert.Equal(SessionEndReason.TimedOut, ended.Reason);
+    }
+
+    [Fact]
+    public async Task MalformedFrame_EndsSessionAsProtocolError()
+    {
+        var client = await ConnectAsync();
+        await client.HandshakeAsync();
+
+        await client.SendRawAsync([0x00, 0x00]);
+
+        var ended = await NextEndedAsync();
+        Assert.Equal(SessionEndReason.ProtocolError, ended.Reason);
+    }
+
+    [Fact]
+    public async Task StoppingHost_EndsSessionAsHostStopping()
+    {
+        var client = await ConnectAsync();
+        await client.HandshakeAsync();
+
+        await _listener.StopAsync(CancellationToken.None);
+
+        var ended = await NextEndedAsync();
+        Assert.Equal(SessionEndReason.HostStopping, ended.Reason);
     }
 }

@@ -1,5 +1,6 @@
 using HomeCursor.Core.Input;
 using HomeCursor.Core.Networking;
+using HomeCursor.Core.Sessions;
 using HomeCursor.Core.Settings;
 using HomeCursor.Core.Tests.Support;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,6 +46,14 @@ public sealed class ServiceCollectionExtensionsTests
         using var provider = BuildProvider(settings);
 
         Assert.Equal(12345, provider.GetRequiredService<IOptions<HostSettings>>().Value.TcpPort);
+    }
+
+    [Fact]
+    public void SessionGateAndMonitor_AreTheSameInstance()
+    {
+        using var provider = BuildProvider();
+
+        Assert.Same(provider.GetRequiredService<ISessionGate>(), provider.GetRequiredService<ISessionMonitor>());
     }
 
     [Fact]
