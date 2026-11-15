@@ -49,6 +49,7 @@ appsettings.Development.local.json
 build/
 !gradle/wrapper/gradle-wrapper.jar
 local.properties
+gradle-daemon-jvm.properties
 captures/
 .externalNativeBuild/
 .cxx/
