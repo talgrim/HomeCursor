@@ -11,7 +11,7 @@ HomeCursor is made of two parts:
 
 Both devices must be on the same local network. No cloud, no account, no internet connection is required.
 
-> **Status:** version 1.0.0 (see [CHANGELOG.md](CHANGELOG.md)). The host receives messages from a client on the local network and injects mouse and keyboard input (see [docs/protocol.md](docs/protocol.md)); the Android client discovers a host on the network, connects to it, reconnects to it on the next start and works as a touchpad and keyboard (shortcut list in portrait, on-screen keyboard in landscape). The host serves one client at a time. The connection is **not authenticated or encrypted**, so use it only on networks you trust.
+> **Status:** version 1.1.0 (see [CHANGELOG.md](CHANGELOG.md)). The host receives messages from a client on the local network and injects mouse and keyboard input (see [docs/protocol.md](docs/protocol.md)); the Android client discovers a host on the network, connects to it, reconnects to it on the next start and works as a touchpad and keyboard (shortcut list in portrait, on-screen keyboard in landscape). The host serves one client at a time. The connection is **not authenticated or encrypted**, so use it only on networks you trust.
 
 ## Features
 
