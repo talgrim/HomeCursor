@@ -14,9 +14,9 @@
     <string name="connect">Connect</string>
     <string name="rescan">Rescan</string>
 
-    <string name="left_button">Left</string>
-    <string name="right_button">Right</string>
-    <string name="middle_button">Mid</string>
+    <string name="left_button">Left button</string>
+    <string name="right_button">Right button</string>
+    <string name="middle_button">Middle button</string>
     <string name="menu">Menu</string>
     <string name="trackpad_description">Trackpad. Drag to move the pointer, tap to click, tap with two fingers to right-click, drag with two fingers to scroll.</string>
     <string name="pointer_speed">Pointer speed: %1$.1f×</string>
@@ -34,6 +34,15 @@
     <string name="shortcut_name">Name</string>
     <string name="shortcut_pick_keys">Pick the keys, for example Alt and Enter</string>
     <string name="shortcut_save">Save</string>
+    <string name="shortcut_edit_named">Edit %1$s</string>
+    <string name="shortcut_delete_named">Delete %1$s</string>
+    <string name="shortcut_move_up_named">Move %1$s up</string>
+    <string name="shortcut_move_down_named">Move %1$s down</string>
+    <string name="key_group_modifiers">Modifiers</string>
+    <string name="key_group_function">Function keys</string>
+    <string name="key_group_letters">Letters</string>
+    <string name="key_group_digits">Numbers</string>
+    <string name="key_group_other">Other keys</string>
 
     <string name="keyboard_mode_keys">Keys</string>
     <string name="keyboard_mode_text">Text</string>
@@ -44,6 +53,7 @@
     <string name="hosts_on_network">PCs on this network</string>
     <string name="no_hosts_found">No PC found. Make sure HomeCursor is running on it and that both are on the same network, or enter its address below.</string>
     <string name="in_use">in use</string>
+    <string name="scanning">Scanning…</string>
     <string name="manual_address">PC address (e.g. 192.168.1.20)</string>
     <string name="manual_address_invalid">Enter an address like 192.168.1.20 or 192.168.1.20:47800</string>
 

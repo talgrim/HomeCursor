@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The visible UI is Compose; this theme only sets the window behind it. values-night/themes.xml is the dark variant. -->
+    <style name="Theme.HomeCursor" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

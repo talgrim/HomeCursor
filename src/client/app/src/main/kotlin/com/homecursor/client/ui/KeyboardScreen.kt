@@ -1,7 +1,10 @@
 package com.homecursor.client.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,6 +41,7 @@ import com.homecursor.client.R
 import com.homecursor.client.input.KeyLabels
 import com.homecursor.client.input.KeyboardLayout
 import com.homecursor.client.protocol.SpecialKey
+import com.homecursor.client.ui.theme.Spacing
 
 /**
  * The full-screen on-screen keyboard (landscape). A mode switch picks between typing key by key
@@ -53,8 +58,8 @@ fun KeyboardScreen(
     onTextSent: (String) -> Unit,
     onClose: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
             SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
                 val modes = KeyboardMode.entries
                 modes.forEachIndexed { index, entry ->
@@ -84,9 +89,9 @@ fun KeyGrid(
     onKeyTapped: (SpecialKey) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(KEY_GAP)) {
         for (row in KeyboardLayout.rows) {
-            Row(modifier = Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(modifier = Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KEY_GAP)) {
                 for (cell in row) {
                     val cellModifier = Modifier.weight(cell.width).fillMaxHeight()
                     if (cell.key == null) {
@@ -100,6 +105,16 @@ fun KeyGrid(
     }
 }
 
+/** The gap between keys, and between the rows of keys. */
+private val KEY_GAP = Spacing.xs
+
+/** Height of the row of action keys next to the compose field. */
+private val ACTION_ROW_HEIGHT = 48.dp
+
+/**
+ * One key. A held modifier (and a key while it is pressed) is shown in the primary colour; otherwise the colour
+ * depends on its [KeyGroup].
+ */
 @Composable
 private fun KeyCap(
     key: SpecialKey,
@@ -108,17 +123,24 @@ private fun KeyCap(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val highlighted = isHeld || isPressed
+    val (restingContainer, restingContent) = key.restingColors()
+    val container by animateColorAsState(if (highlighted) colors.primary else restingContainer, label = "keyContainer")
+    val content by animateColorAsState(if (highlighted) colors.onPrimary else restingContent, label = "keyContent")
+
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isHeld) colors.primary else colors.primaryContainer)
-            .clickable(role = Role.Button) { onTapped(key) },
+            .clip(MaterialTheme.shapes.small)
+            .background(container)
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current, role = Role.Button) { onTapped(key) },
         contentAlignment = Alignment.Center,
     ) {
         Text(
             KeyLabels.of(key),
             style = MaterialTheme.typography.labelLarge,
-            color = if (isHeld) colors.onPrimary else colors.onPrimaryContainer,
+            color = content,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
@@ -140,10 +162,10 @@ private fun ComposePanel(
     modifier: Modifier = Modifier,
 ) {
     var text by rememberSaveable { mutableStateOf("") }
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Row(
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             OutlinedTextField(
                 value = text,
@@ -157,10 +179,10 @@ private fun ComposePanel(
                     text = ""
                 },
                 enabled = text.isNotEmpty(),
-                modifier = Modifier.fillMaxHeight().padding(vertical = 8.dp),
+                modifier = Modifier.padding(top = LABEL_OVERHANG).fillMaxHeight(),
             ) { Text(stringResource(R.string.keyboard_send)) }
         }
-        Row(modifier = Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().height(ACTION_ROW_HEIGHT), horizontalArrangement = Arrangement.spacedBy(KEY_GAP)) {
             for (key in composeActionKeys) {
                 KeyCap(key, key in held, onKeyTapped, Modifier.weight(1f).fillMaxHeight())
             }

@@ -1,25 +1,33 @@
 package com.homecursor.client.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,13 +37,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.homecursor.client.R
 import com.homecursor.client.input.KeyLabels
 import com.homecursor.client.protocol.SpecialKey
 import com.homecursor.client.shortcuts.DefaultShortcuts
 import com.homecursor.client.shortcuts.Shortcut
+import com.homecursor.client.ui.theme.HomeCursorTheme
+import com.homecursor.client.ui.theme.Spacing
 
 /**
  * The shortcut list (portrait). Tapping a shortcut runs it on the host. "Edit" switches the list to managing mode:
@@ -62,52 +74,19 @@ fun ShortcutsSheet(
     val canRestore = DefaultShortcuts.all.any { default -> shortcuts.none { it.id == default.id } }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp)
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.shortcuts),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = { managing = !managing }) {
-                    Text(stringResource(if (managing) R.string.shortcuts_done else R.string.shortcuts_edit))
-                }
-            }
-            Button(onClick = onOpenKeyboard, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.open_keyboard))
-            }
-
-            shortcuts.forEachIndexed { index, shortcut ->
-                HorizontalDivider()
-                ShortcutRow(
-                    shortcut = shortcut,
-                    managing = managing,
-                    canMoveUp = index > 0,
-                    canMoveDown = index < shortcuts.lastIndex,
-                    onRun = { onRun(shortcut) },
-                    onEdit = { editingId = shortcut.id },
-                    onDelete = { onDelete(shortcut.id) },
-                    onMove = { onMove(shortcut.id, it) },
-                )
-            }
-
-            HorizontalDivider()
-            OutlinedButton(onClick = { editingId = NEW_SHORTCUT }, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.shortcut_add))
-            }
-            if (managing && canRestore) {
-                TextButton(onClick = onRestoreDefaults, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.shortcuts_restore_defaults))
-                }
-            }
-        }
+        ShortcutsContent(
+            shortcuts = shortcuts,
+            managing = managing,
+            canRestore = canRestore,
+            onToggleManaging = { managing = !managing },
+            onRun = onRun,
+            onEdit = { editingId = it.id },
+            onAdd = { editingId = NEW_SHORTCUT },
+            onDelete = onDelete,
+            onMove = onMove,
+            onRestoreDefaults = onRestoreDefaults,
+            onOpenKeyboard = onOpenKeyboard,
+        )
     }
 
     editingId?.let { id ->
@@ -131,6 +110,77 @@ fun ShortcutsSheet(
 
 private const val NEW_SHORTCUT = ""
 
+/** What is inside the sheet: separate from the sheet itself so that it can be previewed. */
+@Composable
+private fun ShortcutsContent(
+    shortcuts: List<Shortcut>,
+    managing: Boolean,
+    canRestore: Boolean,
+    onToggleManaging: () -> Unit,
+    onRun: (Shortcut) -> Unit,
+    onEdit: (Shortcut) -> Unit,
+    onAdd: () -> Unit,
+    onDelete: (id: String) -> Unit,
+    onMove: (id: String, offset: Int) -> Unit,
+    onRestoreDefaults: () -> Unit,
+    onOpenKeyboard: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.xl)
+            .padding(bottom = Spacing.xl)
+            .navigationBarsPadding(),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.shortcuts),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f),
+            )
+            if (managing) {
+                FilledTonalButton(onClick = onToggleManaging) { Text(stringResource(R.string.shortcuts_done)) }
+            } else {
+                TextButton(onClick = onToggleManaging) { Text(stringResource(R.string.shortcuts_edit)) }
+            }
+        }
+        Button(onClick = onOpenKeyboard, modifier = Modifier.fillMaxWidth()) {
+            Icon(painterResource(R.drawable.ic_keyboard), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Text(stringResource(R.string.open_keyboard))
+        }
+
+        shortcuts.forEachIndexed { index, shortcut ->
+            ShortcutRow(
+                shortcut = shortcut,
+                managing = managing,
+                canMoveUp = index > 0,
+                canMoveDown = index < shortcuts.lastIndex,
+                onRun = { onRun(shortcut) },
+                onEdit = { onEdit(shortcut) },
+                onDelete = { onDelete(shortcut.id) },
+                onMove = { onMove(shortcut.id, it) },
+            )
+        }
+
+        OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+            Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Text(stringResource(R.string.shortcut_add))
+        }
+        if (managing && canRestore) {
+            TextButton(onClick = onRestoreDefaults, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.shortcuts_restore_defaults))
+            }
+        }
+    }
+}
+
+/**
+ * A shortcut as a card: its name and keys. A tap runs it; in managing mode the card is not tappable and shows the
+ * move, edit and delete buttons instead, each named after the shortcut so that a screen reader can tell them apart.
+ */
 @Composable
 private fun ShortcutRow(
     shortcut: Shortcut,
@@ -142,27 +192,45 @@ private fun ShortcutRow(
     onDelete: () -> Unit,
     onMove: (offset: Int) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (managing) Modifier else Modifier.clickable(onClick = onRun))
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(shortcut.name, style = MaterialTheme.typography.bodyLarge)
-            Text(KeyLabels.combination(shortcut.keys), style = MaterialTheme.typography.bodySmall)
+    val content = @Composable {
+        Column(modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)) {
+            Text(shortcut.name, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.size(Spacing.xs))
+            KeyCombo(shortcut.keys)
+            if (managing) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    ManageButton(R.drawable.ic_arrow_up, stringResource(R.string.shortcut_move_up_named, shortcut.name), canMoveUp) { onMove(-1) }
+                    ManageButton(R.drawable.ic_arrow_down, stringResource(R.string.shortcut_move_down_named, shortcut.name), canMoveDown) { onMove(1) }
+                    ManageButton(R.drawable.ic_edit, stringResource(R.string.shortcut_edit_named, shortcut.name), true, onEdit)
+                    ManageButton(R.drawable.ic_delete, stringResource(R.string.shortcut_delete_named, shortcut.name), true, onDelete)
+                }
+            }
         }
-        if (managing) {
-            TextButton(onClick = { onMove(-1) }, enabled = canMoveUp) { Text("↑") }
-            TextButton(onClick = { onMove(1) }, enabled = canMoveDown) { Text("↓") }
-            TextButton(onClick = onEdit) { Text(stringResource(R.string.shortcuts_edit)) }
-            TextButton(onClick = onDelete) { Text(stringResource(R.string.shortcut_delete)) }
-        }
+    }
+    val shape = MaterialTheme.shapes.medium
+    val color = MaterialTheme.colorScheme.surfaceContainerLow
+    if (managing) {
+        Surface(modifier = Modifier.fillMaxWidth(), shape = shape, color = color) { content() }
+    } else {
+        Surface(onClick = onRun, modifier = Modifier.fillMaxWidth(), shape = shape, color = color) { content() }
     }
 }
 
-/** Name field plus a chip for every key: the keys picked are the shortcut, shown as "Ctrl + C". */
+@Composable
+private fun ManageButton(icon: Int, description: String, enabled: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick, enabled = enabled) {
+        Icon(painterResource(icon), contentDescription = description)
+    }
+}
+
+/** Every key, by group, in the order of the groups: what the key picker offers. */
+private val keysByGroup: List<Pair<KeyGroup, List<SpecialKey>>> =
+    KeyGroup.entries.map { group -> group to SpecialKey.entries.filter { it.group() == group } }
+
+/**
+ * Name field, the shortcut being built (drawn as keycaps, in the order the keys were picked), and a chip for every
+ * key, grouped so that Ctrl is not lost among forty letters.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ShortcutEditor(
@@ -182,7 +250,7 @@ private fun ShortcutEditor(
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
                 OutlinedTextField(
                     value = name,
@@ -191,17 +259,43 @@ private fun ShortcutEditor(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Text(
-                    if (keys.isEmpty()) stringResource(R.string.shortcut_pick_keys) else KeyLabels.combination(keys),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    for (key in SpecialKey.entries) {
-                        FilterChip(
-                            selected = key in keys,
-                            onClick = { codes = if (key in keys) codes - key.code else codes + key.code },
-                            label = { Text(KeyLabels.of(key)) },
-                        )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ) {
+                    Box(
+                        modifier = Modifier.heightIn(min = EDITOR_PREVIEW_MIN_HEIGHT).padding(Spacing.md),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        if (keys.isEmpty()) {
+                            Text(
+                                stringResource(R.string.shortcut_pick_keys),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            KeyCombo(keys)
+                        }
+                    }
+                }
+                for ((group, groupKeys) in keysByGroup) {
+                    Text(
+                        stringResource(group.title),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    ) {
+                        for (key in groupKeys) {
+                            FilterChip(
+                                selected = key in keys,
+                                onClick = { codes = if (key in keys) codes - key.code else codes + key.code },
+                                label = { Text(KeyLabels.of(key)) },
+                            )
+                        }
                     }
                 }
             }
@@ -214,4 +308,35 @@ private fun ShortcutEditor(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+private val EDITOR_PREVIEW_MIN_HEIGHT = 48.dp
+
+@Preview(name = "Browsing, light", showBackground = true, widthDp = 360)
+@Composable
+private fun ShortcutsLightPreview() = ShortcutsPreview(darkTheme = false, managing = false)
+
+@Preview(name = "Managing, dark", showBackground = true, widthDp = 360)
+@Composable
+private fun ShortcutsManagingDarkPreview() = ShortcutsPreview(darkTheme = true, managing = true)
+
+@Composable
+private fun ShortcutsPreview(darkTheme: Boolean, managing: Boolean) {
+    HomeCursorTheme(darkTheme = darkTheme) {
+        Surface {
+            ShortcutsContent(
+                shortcuts = DefaultShortcuts.all.take(4),
+                managing = managing,
+                canRestore = true,
+                onToggleManaging = {},
+                onRun = {},
+                onEdit = {},
+                onAdd = {},
+                onDelete = {},
+                onMove = { _, _ -> },
+                onRestoreDefaults = {},
+                onOpenKeyboard = {},
+            )
+        }
+    }
 }

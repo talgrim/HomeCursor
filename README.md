@@ -28,7 +28,7 @@ Both devices must be on the same local network. No cloud, no account, no interne
 | Tap with two fingers | Right click |
 | Drag two fingers | Scroll, vertically and horizontally |
 | Tap, then touch again and drag | Drag with the left button held (select text, move windows) |
-| **Left** / **Right** / **Mid** buttons | Hold a mouse button (Mid is the middle button, e.g. to pan or open links in a new tab); combine with a finger on the pad to drag |
+| **Left** / **Right** / **Mid** buttons (a mouse icon with the button's zone filled) | Hold a mouse button (Mid is the middle button, e.g. to pan or open links in a new tab); combine with a finger on the pad to drag |
 
 A tap waits briefly to see whether you touch again to drag. That is why its click comes a moment late: sending it at
 once would make the start of the drag a second press, which Windows treats as a double click (a window's title bar
