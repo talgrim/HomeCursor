@@ -5,6 +5,7 @@ using HomeCursor.Core.Settings;
 using HomeCursor.Protocol;
 using HomeCursor.Protocol.Messages;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace HomeCursor.Core.Networking;
 
@@ -18,10 +19,10 @@ public sealed class DiscoveryBeacon : HostLoopBase
     private readonly ILogger<DiscoveryBeacon> _logger;
     private UdpClient? _udp;
 
-    public DiscoveryBeacon(HostSettings settings, ISessionGate gate, ILogger<DiscoveryBeacon> logger)
+    public DiscoveryBeacon(IOptions<HostSettings> settings, ISessionGate gate, ILogger<DiscoveryBeacon> logger)
         : base(logger)
     {
-        _settings = settings;
+        _settings = settings.Value;
         _gate = gate;
         _logger = logger;
     }

@@ -7,6 +7,7 @@ using HomeCursor.Core.Tests.Support;
 using HomeCursor.Protocol;
 using HomeCursor.Protocol.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace HomeCursor.Core.Tests.Networking;
 
@@ -27,7 +28,7 @@ public sealed class DiscoveryBeaconTests : IAsyncLifetime
 
     public DiscoveryBeaconTests()
     {
-        _beacon = new DiscoveryBeacon(_settings, _gate, NullLogger<DiscoveryBeacon>.Instance);
+        _beacon = new DiscoveryBeacon(Options.Create(_settings), _gate, NullLogger<DiscoveryBeacon>.Instance);
     }
 
     public Task InitializeAsync() => _beacon.StartAsync(CancellationToken.None);
@@ -92,7 +93,7 @@ public sealed class DiscoveryBeaconTests : IAsyncLifetime
     [Fact]
     public async Task StartAsync_WhenPortIsInUse_Throws()
     {
-        var beacon = new DiscoveryBeacon(_settings, _gate, NullLogger<DiscoveryBeacon>.Instance);
+        var beacon = new DiscoveryBeacon(Options.Create(_settings), _gate, NullLogger<DiscoveryBeacon>.Instance);
 
         await Assert.ThrowsAsync<SocketException>(() => beacon.StartAsync(CancellationToken.None));
     }

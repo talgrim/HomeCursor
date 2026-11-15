@@ -86,7 +86,8 @@ The client then connects to `<reply source address>:<tcpPort>`.
 
 ## Host settings
 
-The Windows host reads `%APPDATA%\HomeCursor\settings.json` at startup (created with defaults on first run):
+The Windows host reads `settings.json` from its own directory at startup. The file ships with the app (source:
+`src/host/HomeCursor.Host.Tray/settings.json`); if it is missing, it is recreated with defaults:
 
 ```json
 {
