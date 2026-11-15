@@ -11,7 +11,7 @@ HomeCursor is made of two parts:
 
 Both devices must be on the same local network. No cloud, no account, no internet connection is required.
 
-> **Status:** early development. The host can receive messages from a client on the local network and inject mouse and keyboard input (see [docs/protocol.md](docs/protocol.md)); the Android client can discover a host on the network, connect to it, reconnect to it on the next start and use the phone as a touchpad and keyboard (shortcut list in portrait, on-screen keyboard in landscape). The connection is **not authenticated or encrypted** yet, so use it only on networks you trust.
+> **Status:** version 1.0.0 (see [CHANGELOG.md](CHANGELOG.md)). The host receives messages from a client on the local network and injects mouse and keyboard input (see [docs/protocol.md](docs/protocol.md)); the Android client discovers a host on the network, connects to it, reconnects to it on the next start and works as a touchpad and keyboard (shortcut list in portrait, on-screen keyboard in landscape). The host serves one client at a time. The connection is **not authenticated or encrypted**, so use it only on networks you trust.
 
 ## Features
 
@@ -37,11 +37,6 @@ would maximise instead of moving).
 The gear in the upper right corner of the pad opens the settings: pointer speed (0.5× to 3×, 1× by default) and natural scrolling (off by default: fingers
 moving down scroll down, like a mouse wheel), plus Disconnect and Forget this PC.
 
-## Planned features
-
-- Pairing with a PIN or QR code so only trusted phones can connect
-- Encrypted LAN communication
-
 ## Repository layout
 
 ```
@@ -55,6 +50,9 @@ HomeCursor/
 │   │   └── *.Tests/                # xUnit tests for Protocol and Core
 │   └── client/                     # Kotlin + Jetpack Compose Android client (Gradle)
 ├── docs/                           # Protocol specification (protocol.md)
+├── scripts/                        # Release helpers (publish-host.sh, generate-host-icon.py)
+├── CHANGELOG.md
+├── LICENSE
 └── README.md
 ```
 
@@ -62,7 +60,7 @@ HomeCursor/
 
 ### Host
 
-Requirements: [.NET SDK](https://dotnet.microsoft.com/download) (version to be decided), Windows.
+Requirements: [.NET 9 SDK](https://dotnet.microsoft.com/download), Windows (to run; building also works on Linux/WSL).
 
 ```bash
 cd src/host
@@ -80,6 +78,30 @@ cd src/client
 ./gradlew assembleDebug   # gradlew.bat on Windows
 ```
 
+## Releasing
+
+Bump the version in `src/host/HomeCursor.Host.Tray/HomeCursor.Host.Tray.csproj` (`Version`) and in
+`src/client/app/build.gradle.kts` (`versionName`, and `versionCode` which must increase on every release), and update
+[CHANGELOG.md](CHANGELOG.md).
+
+**Host** (Windows zip with a self-contained single-file exe, no .NET install needed):
+
+```bash
+scripts/publish-host.sh          # writes artifacts/HomeCursor-Host-win-x64.zip
+```
+
+**Client** (signed release APK): create the release keystore once and copy `src/client/keystore.properties.example`
+to `src/client/keystore.properties` with its details (both the keystore and the properties file are gitignored; back
+the keystore up, an app can only be updated with the key it was first signed with). Then:
+
+```bash
+cd src/client
+./gradlew assembleRelease        # app/build/outputs/apk/release/app-release.apk
+```
+
+The host's first start makes Windows ask to allow it through the firewall (TCP 47800, UDP 47801 and 47802). The exe is
+not code-signed, so Windows SmartScreen may warn on first run.
+
 ## Contributing
 
 - Branch from `develop` and open pull requests against `develop`. `main` is reserved for releases.
@@ -87,4 +109,4 @@ cd src/client
 
 ## License
 
-To be decided.
+[MIT](LICENSE). Free to use.

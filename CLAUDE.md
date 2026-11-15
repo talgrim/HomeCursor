@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-HomeCursor lets a phone control a PC's mouse and keyboard over the local network (no cloud, no accounts). Two parts: a **C# host** (Windows, in `src/host`) and a **Kotlin Android client** (Jetpack Compose, in `src/client`). The project is in early development: the host receives client messages and injects input (no pairing or encryption yet), while the client can discover and connect to a host, remembers it and works as a touchpad (move, click, right click, middle click, scroll, drag) and keyboard (portrait: list of shortcuts; landscape: full-screen on-screen keyboard).
+HomeCursor lets a phone control a PC's mouse and keyboard over the local network (no cloud, no accounts). Two parts: a **C# host** (Windows, in `src/host`) and a **Kotlin Android client** (Jetpack Compose, in `src/client`). The project is in early development: the host receives client messages and injects input (no pairing or encryption, by design: the host serves one client at a time on a trusted LAN), while the client can discover and connect to a host, remembers it and works as a touchpad (move, click, right click, middle click, scroll, drag) and keyboard (portrait: list of shortcuts; landscape: full-screen on-screen keyboard).
 
 ## Commands
 

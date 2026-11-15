@@ -7,6 +7,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWindowsForms>true</UseWindowsForms>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>HomeCursor</AssemblyName>
+    <ApplicationIcon>Assets\HomeCursor.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Product>HomeCursor</Product>
   </PropertyGroup>
 
   <ItemGroup>
