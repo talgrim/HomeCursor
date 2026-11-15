@@ -13,6 +13,7 @@ public class MessageCodecTests
         new PongMessage(),
         new MouseMoveMessage(-12, 345),
         new MouseButtonMessage(MouseButton.Right, true),
+        new MouseButtonMessage(MouseButton.Middle, false),
         new ScrollMessage(-120, 240),
         new KeyMessage(SpecialKey.F5, false),
         new TextMessage("Zażółć gęślą jaźń 🙂"),
