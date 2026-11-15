@@ -1,7 +1,8 @@
 namespace HomeCursor.Protocol;
 
 /// <summary>
-/// Non-text keys. Regular characters are sent with <see cref="Messages.TextMessage"/>.
+/// Physical keys, sent with <see cref="Messages.KeyMessage"/> so they can be held and combined into shortcuts.
+/// Text typed as characters (any language, emoji) is sent with <see cref="Messages.TextMessage"/> instead.
 /// </summary>
 public enum SpecialKey : byte
 {
@@ -25,6 +26,8 @@ public enum SpecialKey : byte
     Alt = 17,
     Windows = 18,
 
+    Space = 19,
+
     F1 = 32,
     F2 = 33,
     F3 = 34,
@@ -36,5 +39,55 @@ public enum SpecialKey : byte
     F9 = 40,
     F10 = 41,
     F11 = 42,
-    F12 = 43
+    F12 = 43,
+
+    A = 64,
+    B = 65,
+    C = 66,
+    D = 67,
+    E = 68,
+    F = 69,
+    G = 70,
+    H = 71,
+    I = 72,
+    J = 73,
+    K = 74,
+    L = 75,
+    M = 76,
+    N = 77,
+    O = 78,
+    P = 79,
+    Q = 80,
+    R = 81,
+    S = 82,
+    T = 83,
+    U = 84,
+    V = 85,
+    W = 86,
+    X = 87,
+    Y = 88,
+    Z = 89,
+
+    D0 = 96,
+    D1 = 97,
+    D2 = 98,
+    D3 = 99,
+    D4 = 100,
+    D5 = 101,
+    D6 = 102,
+    D7 = 103,
+    D8 = 104,
+    D9 = 105,
+
+    Minus = 112,
+    Equals = 113,
+    LeftBracket = 114,
+    RightBracket = 115,
+    Backslash = 116,
+    Semicolon = 117,
+    Quote = 118,
+    Comma = 119,
+    Period = 120,
+    Slash = 121,
+    Grave = 122
 }

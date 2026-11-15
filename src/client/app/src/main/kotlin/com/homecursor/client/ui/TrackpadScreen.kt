@@ -54,9 +54,10 @@ import com.homecursor.client.storage.TrackpadSettings
 import kotlinx.coroutines.flow.Flow
 
 /**
- * The connected screen: a large touch pad with a strip of buttons (left click, right click, menu) beside it. The
+ * The connected screen: a large touch pad with a strip of buttons (left click, right click, keyboard, menu) beside it. The
  * strip is at the bottom in portrait and at the side in landscape, so the pad keeps its width where the thumbs are.
- * The menu opens the settings and the disconnect actions.
+ * The keyboard button opens the shortcuts or the on-screen keyboard (see [ConnectedScreen]); the menu opens the
+ * settings and the disconnect actions.
  *
  * Stateless: it reports touches and button presses, and the view model decides what they mean.
  */
@@ -71,6 +72,7 @@ fun TrackpadScreen(
     onButtonReleased: (MouseButton) -> Unit,
     onSensitivityChanged: (Float) -> Unit,
     onNaturalScrollChanged: (Boolean) -> Unit,
+    onKeyboard: () -> Unit,
     onDisconnect: () -> Unit,
     onForget: () -> Unit,
 ) {
@@ -80,7 +82,7 @@ fun TrackpadScreen(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val buttons = @Composable { vertical: Boolean ->
-            ButtonStrip(vertical, onButtonPressed, onButtonReleased, onMenu = { menuOpen = true })
+            ButtonStrip(vertical, onButtonPressed, onButtonReleased, onKeyboard, onMenu = { menuOpen = true })
         }
         if (maxWidth > maxHeight) {
             Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -151,8 +153,12 @@ private fun ButtonStrip(
     vertical: Boolean,
     onPressed: (MouseButton) -> Unit,
     onReleased: (MouseButton) -> Unit,
+    onKeyboard: () -> Unit,
     onMenu: () -> Unit,
 ) {
+    val keyboard = @Composable { modifier: Modifier ->
+        TextButton(onClick = onKeyboard, modifier = modifier) { Text(stringResource(R.string.keyboard_button)) }
+    }
     val menuDescription = stringResource(R.string.menu)
     val menu = @Composable { modifier: Modifier ->
         TextButton(onClick = onMenu, modifier = modifier.semantics { contentDescription = menuDescription }) {
@@ -163,12 +169,14 @@ private fun ButtonStrip(
         Column(modifier = Modifier.width(120.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PadButton(stringResource(R.string.left_button), MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
             PadButton(stringResource(R.string.right_button), MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxWidth())
+            keyboard(Modifier.fillMaxWidth())
             menu(Modifier.fillMaxWidth())
         }
     } else {
         Row(modifier = Modifier.fillMaxWidth().height(80.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PadButton(stringResource(R.string.left_button), MouseButton.Left, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
             PadButton(stringResource(R.string.right_button), MouseButton.Right, onPressed, onReleased, Modifier.weight(1f).fillMaxHeight())
+            keyboard(Modifier.fillMaxHeight())
             menu(Modifier.fillMaxHeight())
         }
     }

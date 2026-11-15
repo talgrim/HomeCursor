@@ -27,7 +27,21 @@ internal static class WindowsVirtualKeys
         SpecialKey.Control => 0x11,
         SpecialKey.Alt => 0x12,
         SpecialKey.Windows => 0x5B,
+        SpecialKey.Space => 0x20,
         >= SpecialKey.F1 and <= SpecialKey.F12 => (ushort)(0x70 + (key - SpecialKey.F1)),
+        >= SpecialKey.A and <= SpecialKey.Z => (ushort)(0x41 + (key - SpecialKey.A)),
+        >= SpecialKey.D0 and <= SpecialKey.D9 => (ushort)(0x30 + (key - SpecialKey.D0)),
+        SpecialKey.Minus => 0xBD,
+        SpecialKey.Equals => 0xBB,
+        SpecialKey.LeftBracket => 0xDB,
+        SpecialKey.RightBracket => 0xDD,
+        SpecialKey.Backslash => 0xDC,
+        SpecialKey.Semicolon => 0xBA,
+        SpecialKey.Quote => 0xDE,
+        SpecialKey.Comma => 0xBC,
+        SpecialKey.Period => 0xBE,
+        SpecialKey.Slash => 0xBF,
+        SpecialKey.Grave => 0xC0,
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unsupported key.")
     };
 
