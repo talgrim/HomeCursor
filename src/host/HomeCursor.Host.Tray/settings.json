@@ -4,5 +4,7 @@
   "UdpPort": 47801,
   "DiscoveryPort": 47802,
   "PingIntervalSeconds": 5,
-  "HeartbeatTimeoutSeconds": 15
+  "HeartbeatTimeoutSeconds": 15,
+  "NotifyOnClientConnection": true,
+  "NotifyOnClientDisconnection": false
 }

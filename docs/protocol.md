@@ -97,12 +97,15 @@ The Windows host reads `settings.json` from its own directory at startup. The fi
   "DiscoveryPort": 47802,
   "HostName": "MY-PC",
   "PingIntervalSeconds": 5,
-  "HeartbeatTimeoutSeconds": 15
+  "HeartbeatTimeoutSeconds": 15,
+  "NotifyOnClientConnection": true,
+  "NotifyOnClientDisconnection": true
 }
 ```
 
 Every property is optional. Ports must be 1-65535, `UdpPort` must differ from `DiscoveryPort`, and
-`HeartbeatTimeoutSeconds` must be greater than `PingIntervalSeconds`. Invalid settings stop the host at startup with a message.
+`HeartbeatTimeoutSeconds` must be greater than `PingIntervalSeconds`. `NotifyOnClientConnection` and `NotifyOnClientDisconnection` (both default `true`) show a tray notification when a client connects or disconnects;
+the tray menu and icon always show the connected client. Invalid settings stop the host at startup with a message.
 
 ## Platform notes (Windows host)
 
