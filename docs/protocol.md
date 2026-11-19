@@ -103,13 +103,20 @@ The Windows host reads `settings.json` from its own directory at startup. The fi
   "PingIntervalSeconds": 5,
   "HeartbeatTimeoutSeconds": 15,
   "NotifyOnClientConnection": true,
-  "NotifyOnClientDisconnection": true
+  "NotifyOnClientDisconnection": true,
+  "DiagnosticsEnabled": false
 }
 ```
 
 Every property is optional. Ports must be 1-65535, `UdpPort` must differ from `DiscoveryPort`, and
 `HeartbeatTimeoutSeconds` must be greater than `PingIntervalSeconds`. `NotifyOnClientConnection` and `NotifyOnClientDisconnection` (both default `true`) show a tray notification when a client connects or disconnects;
 the tray menu and icon always show the connected client. Invalid settings stop the host at startup with a message.
+
+`DiagnosticsEnabled` (default `false`) makes the host write a diagnostics log to `homecursor.log` (rotated, at most
+3 files of 5 MB) in `DiagnosticsLogDirectory`, by default the folder of the host's executable (next to `settings.json`). It records the session
+lifecycle, the Ping cadence and, for every second of pointer activity, one line with the datagrams applied, lost
+(gaps in the sequence numbers), stale and rejected, the gaps between datagrams, the time spent injecting input and the
+socket backlog. It exists to find out where cursor lag comes from and does not change the protocol.
 
 ## Platform notes (Windows host)
 

@@ -1,10 +1,12 @@
 using HomeCursor.Core;
+using HomeCursor.Core.Diagnostics;
 using HomeCursor.Core.Input;
 using HomeCursor.Core.Settings;
 using HomeCursor.Host.Tray;
 using HomeCursor.Host.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 internal static class Program
@@ -23,12 +25,12 @@ internal static class Program
         // settings.json ships next to the executable (copied from the project on build).
         var settingsPath = Path.Combine(AppContext.BaseDirectory, "settings.json");
 
-        using var provider = BuildServiceProvider(settingsPath);
-
+        // Load settings first so a bad settings file is reported before anything starts, and so the
+        // logging setup can depend on them.
+        HostSettings settings;
         try
         {
-            // Resolve settings eagerly so a bad settings file is reported before anything starts.
-            _ = provider.GetRequiredService<IOptions<HostSettings>>().Value;
+            settings = new JsonFileSettingsProvider(settingsPath, NullLogger<JsonFileSettingsProvider>.Instance).Load();
         }
         catch (SettingsException ex)
         {
@@ -36,17 +38,28 @@ internal static class Program
             return;
         }
 
+        using var provider = BuildServiceProvider(settings);
+
+        LogStartup(provider.GetRequiredService<ILogger<TrayApplicationContext>>(), settingsPath, settings);
         Application.Run(provider.GetRequiredService<TrayApplicationContext>());
     }
 
-    private static ServiceProvider BuildServiceProvider(string settingsPath)
+    private static ServiceProvider BuildServiceProvider(HostSettings settings)
     {
         var services = new ServiceCollection();
 
-        services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Debug).AddDebug());
+        services.AddLogging(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Debug).AddDebug();
 
-        services.AddSingleton<ISettingsProvider>(sp =>
-            new JsonFileSettingsProvider(settingsPath, sp.GetRequiredService<ILogger<JsonFileSettingsProvider>>()));
+            if (settings.DiagnosticsEnabled)
+            {
+                // Registered through a factory so the container disposes it and the queued lines are written out.
+                builder.Services.AddSingleton<ILoggerProvider>(_ => new RollingFileLoggerProvider(GetLogDirectory(settings)));
+            }
+        });
+
+        services.AddSingleton(Options.Create(settings));
         services.AddSingleton<IInputInjector, WindowsInputInjector>();
         services.AddHomeCursorCore();
 
@@ -59,5 +72,23 @@ internal static class Program
             ValidateOnBuild = true,
 #endif
         });
+    }
+
+    private static string GetLogDirectory(HostSettings settings) =>
+        string.IsNullOrWhiteSpace(settings.DiagnosticsLogDirectory)
+            ? AppContext.BaseDirectory
+            : settings.DiagnosticsLogDirectory;
+
+    private static void LogStartup(ILogger logger, string settingsPath, HostSettings settings)
+    {
+        var version = typeof(Program).Assembly.GetName().Version;
+        logger.LogInformation(
+            "HomeCursor host {Version} on {OS} (.NET {Runtime}), settings {SettingsPath}",
+            version, Environment.OSVersion, Environment.Version, settingsPath);
+
+        if (settings.DiagnosticsEnabled)
+        {
+            logger.LogInformation("Diagnostics log enabled, writing to {Directory}", GetLogDirectory(settings));
+        }
     }
 }

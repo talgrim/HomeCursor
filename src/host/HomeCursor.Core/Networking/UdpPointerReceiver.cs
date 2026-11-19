@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using HomeCursor.Core.Diagnostics;
 using HomeCursor.Core.Input;
 using HomeCursor.Core.Sessions;
 using HomeCursor.Core.Settings;
@@ -19,6 +21,7 @@ public sealed class UdpPointerReceiver : HostLoopBase
     private readonly HostSettings _settings;
     private readonly ISessionGate _gate;
     private readonly IMessageDispatcher _dispatcher;
+    private readonly IPointerDiagnostics _diagnostics;
     private readonly ILogger<UdpPointerReceiver> _logger;
     private UdpClient? _udp;
 
@@ -26,12 +29,14 @@ public sealed class UdpPointerReceiver : HostLoopBase
         IOptions<HostSettings> settings,
         ISessionGate gate,
         IMessageDispatcher dispatcher,
+        IPointerDiagnostics diagnostics,
         ILogger<UdpPointerReceiver> logger)
         : base(logger)
     {
         _settings = settings.Value;
         _gate = gate;
         _dispatcher = dispatcher;
+        _diagnostics = diagnostics;
         _logger = logger;
     }
 
@@ -56,23 +61,38 @@ public sealed class UdpPointerReceiver : HostLoopBase
             return;
         }
 
+        var received = Stopwatch.GetTimestamp();
+
         if (!UdpPacket.TryDecode(result.Buffer, out var packet))
         {
+            _diagnostics.Record(new PacketSample(PacketOutcome.Undecodable, received));
             return;
         }
 
         if (packet.Message is not (MouseMoveMessage or ScrollMessage))
         {
+            _diagnostics.Record(new PacketSample(PacketOutcome.NotPointer, received));
             return;
         }
 
         var session = _gate.FindActive(packet.SessionId, result.RemoteEndPoint.Address);
-        if (session is null || !session.TryAcceptSequence(packet.Sequence))
+        if (session is null)
         {
+            _diagnostics.Record(new PacketSample(PacketOutcome.Rejected, received));
             return;
         }
 
+        if (!session.TryAcceptSequence(packet.Sequence, out var missed))
+        {
+            _diagnostics.Record(new PacketSample(PacketOutcome.Stale, received));
+            return;
+        }
+
+        var backlog = _udp!.Available;
+        var injectStart = Stopwatch.GetTimestamp();
         _dispatcher.Dispatch(packet.Message);
+        _diagnostics.Record(new PacketSample(
+            PacketOutcome.Applied, received, missed, backlog, Stopwatch.GetElapsedTime(injectStart)));
     }
 
     protected override Task UnbindAsync()

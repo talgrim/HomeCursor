@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using HomeCursor.Core.Input;
@@ -153,6 +154,7 @@ public sealed class TcpControlListener : HostLoopBase
 
     private async Task ReceiveLoopAsync(NetworkStream stream, CancellationToken cancellationToken)
     {
+        var lastPing = Stopwatch.StartNew();
         while (true)
         {
             var message = await ReadAsync(stream, cancellationToken).ConfigureAwait(false);
@@ -162,7 +164,12 @@ public sealed class TcpControlListener : HostLoopBase
                     _logger.LogInformation("Client disconnected");
                     return;
                 case PingMessage:
+                    var sinceLastPing = lastPing.Elapsed;
+                    lastPing.Restart();
                     await MessageFraming.WriteAsync(stream, new PongMessage(), cancellationToken).ConfigureAwait(false);
+                    _logger.LogDebug(
+                        "Ping after {SincePing:0} ms, Pong sent in {Pong:0.0} ms",
+                        sinceLastPing.TotalMilliseconds, lastPing.Elapsed.TotalMilliseconds);
                     break;
                 case HelloMessage:
                     throw new ProtocolException("Unexpected Hello after the handshake.");
