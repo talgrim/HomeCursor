@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "d492602",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "HomeCursor",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "xml",
+          "path": "src/host/HomeCursor.Host.Tray/HomeCursor.Host.Tray.csproj",
+          "xpath": "//Project/PropertyGroup/Version"
+        },
+        {
+          "type": "generic",
+          "path": "src/client/app/build.gradle.kts"
+        }
+      ]
+    }
+  }
+}

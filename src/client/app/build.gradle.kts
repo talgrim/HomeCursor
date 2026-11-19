@@ -5,6 +5,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// release-please bumps this line; versionCode is derived so it always grows with the version.
+val appVersion = "1.1.0" // x-release-please-version
+val appVersionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+
 android {
     namespace = "com.homecursor.client"
     compileSdk {
@@ -15,8 +19,8 @@ android {
         applicationId = "com.homecursor.client"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = appVersionCode
+        versionName = appVersion
     }
 
     // Release signing details live in keystore.properties (gitignored, see keystore.properties.example).
