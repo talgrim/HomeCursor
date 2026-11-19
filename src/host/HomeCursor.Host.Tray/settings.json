@@ -6,5 +6,6 @@
   "PingIntervalSeconds": 5,
   "HeartbeatTimeoutSeconds": 15,
   "NotifyOnClientConnection": true,
-  "NotifyOnClientDisconnection": false
+  "NotifyOnClientDisconnection": false,
+  "DiagnosticsEnabled": false
 }

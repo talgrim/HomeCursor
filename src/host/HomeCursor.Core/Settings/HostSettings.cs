@@ -34,6 +34,15 @@ public sealed record HostSettings
     /// <summary>Whether the host shows a notification when a client disconnects.</summary>
     public bool NotifyOnClientDisconnection { get; init; } = true;
 
+    /// <summary>
+    /// Whether the host writes a diagnostics log (connection events and per-second pointer statistics) to a file,
+    /// to help find out where lag comes from. Off by default.
+    /// </summary>
+    public bool DiagnosticsEnabled { get; init; }
+
+    /// <summary>Folder of the diagnostics log. Empty uses the folder of the host's executable.</summary>
+    public string? DiagnosticsLogDirectory { get; init; }
+
     public IPAddress GetBindAddress() => IPAddress.Parse(BindAddress);
 
     public TimeSpan GetHeartbeatTimeout() => TimeSpan.FromSeconds(HeartbeatTimeoutSeconds);
