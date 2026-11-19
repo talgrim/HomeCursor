@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HomeCursor</string>
+
+    <string name="connecting_to">Connecting to %1$s…</string>
+    <string name="reconnecting_to">Reconnecting to %1$s…</string>
+    <string name="searching_for">Searching the network for %1$s…</string>
+    <string name="host_busy_retrying">%1$s is busy. Trying again…</string>
+    <string name="connected_to">Connected to %1$s</string>
+
+    <string name="cancel">Cancel</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="forget_host">Forget this PC</string>
+    <string name="connect">Connect</string>
+    <string name="rescan">Rescan</string>
+
+    <string name="left_button">Left button</string>
+    <string name="right_button">Right button</string>
+    <string name="middle_button">Middle button</string>
+    <string name="menu">Menu</string>
+    <string name="trackpad_description">Trackpad. Drag to move the pointer, tap to click, tap with two fingers to right-click, drag with two fingers to scroll.</string>
+    <string name="pointer_speed">Pointer speed: %1$.1f×</string>
+    <string name="natural_scroll">Natural scrolling</string>
+    <string name="natural_scroll_summary">The page follows your fingers, like on a phone. Off, it scrolls like a mouse wheel.</string>
+
+    <string name="tutorial">Tutorial</string>
+    <string name="tutorial_summary">Take the guided tour of the trackpad again.</string>
+    <string name="tutorial_next">Next</string>
+    <string name="tutorial_back">Back</string>
+    <string name="tutorial_skip">Skip tour</string>
+    <string name="tutorial_done">Got it</string>
+    <string name="tutorial_progress">%1$d of %2$d</string>
+    <string name="tutorial_welcome_title">Welcome to HomeCursor</string>
+    <string name="tutorial_welcome_text">Your phone is now the mouse and keyboard of your PC. This short tour shows how it works. You can skip it now and replay it any time from the settings.</string>
+    <string name="tutorial_move_title">Move the pointer</string>
+    <string name="tutorial_move_text">Slide one finger on the pad, like on a laptop touchpad. The pointer follows.</string>
+    <string name="tutorial_tap_title">Click and drag</string>
+    <string name="tutorial_tap_text">Tap once to left-click, tap twice to double-click. To drag, tap and touch again right away, then move your finger.</string>
+    <string name="tutorial_right_click_title">Right-click</string>
+    <string name="tutorial_right_click_text">Tap with two fingers at once to right-click.</string>
+    <string name="tutorial_scroll_title">Scroll</string>
+    <string name="tutorial_scroll_text">Slide two fingers up or down to scroll, or sideways to scroll horizontally. You can reverse the direction with natural scrolling in the settings.</string>
+    <string name="tutorial_left_title">Left button</string>
+    <string name="tutorial_left_text">Works like the left button of a mouse. Hold it and slide a finger on the pad to select text or drag things.</string>
+    <string name="tutorial_middle_title">Middle button</string>
+    <string name="tutorial_middle_text">Works like the wheel click of a mouse, for example to open a link in a new tab or close a tab.</string>
+    <string name="tutorial_right_title">Right button</string>
+    <string name="tutorial_right_text">Works like the right button of a mouse. Tapping with two fingers on the pad does the same.</string>
+    <string name="tutorial_keyboard_title">Keyboard</string>
+    <string name="tutorial_keyboard_text">Held upright, it opens your shortcuts, such as Copy and Paste. Held sideways, it opens the full on-screen keyboard.</string>
+    <string name="tutorial_settings_title">Settings</string>
+    <string name="tutorial_settings_text">Change the pointer speed and the scroll direction, replay this tour, or disconnect from the PC.</string>
+
+    <string name="shortcuts">Shortcuts</string>
+    <string name="shortcuts_edit">Edit</string>
+    <string name="shortcuts_done">Done</string>
+    <string name="shortcuts_restore_defaults">Restore default shortcuts</string>
+    <string name="open_keyboard">Open keyboard</string>
+    <string name="shortcut_add">Add shortcut</string>
+    <string name="shortcut_edit">Edit shortcut</string>
+    <string name="shortcut_delete">Delete</string>
+    <string name="shortcut_name">Name</string>
+    <string name="shortcut_pick_keys">Pick the keys, for example Alt and Enter</string>
+    <string name="shortcut_save">Save</string>
+    <string name="shortcut_edit_named">Edit %1$s</string>
+    <string name="shortcut_delete_named">Delete %1$s</string>
+    <string name="shortcut_move_up_named">Move %1$s up</string>
+    <string name="shortcut_move_down_named">Move %1$s down</string>
+    <string name="key_group_modifiers">Modifiers</string>
+    <string name="key_group_function">Function keys</string>
+    <string name="key_group_letters">Letters</string>
+    <string name="key_group_digits">Numbers</string>
+    <string name="key_group_other">Other keys</string>
+
+    <string name="keyboard_mode_keys">Keys</string>
+    <string name="keyboard_mode_text">Text</string>
+    <string name="keyboard_close">Close</string>
+    <string name="keyboard_text_hint">Text to send to the PC</string>
+    <string name="keyboard_send">Send</string>
+
+    <string name="hosts_on_network">PCs on this network</string>
+    <string name="no_hosts_found">No PC found. Make sure HomeCursor is running on it and that both are on the same network, or enter its address below.</string>
+    <string name="in_use">in use</string>
+    <string name="scanning">Scanning…</string>
+    <string name="manual_address">PC address (e.g. 192.168.1.20)</string>
+    <string name="manual_address_invalid">Enter an address like 192.168.1.20 or 192.168.1.20:47800</string>
+
+    <string name="failure_busy">Another device is already connected to %1$s.</string>
+    <string name="failure_unsupported_version">%1$s runs an incompatible version of HomeCursor.</string>
+    <string name="failure_unreachable">Could not reach %1$s.</string>
+    <string name="failure_timeout">%1$s did not answer.</string>
+    <string name="failure_protocol_error">%1$s sent an unexpected response.</string>
+    <string name="failure_host_closed">%1$s closed the connection.</string>
+</resources>

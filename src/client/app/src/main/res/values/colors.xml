@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the Compose theme's surface so there is no flash before the first frame. -->
+    <color name="window_background">#FFF6FAFA</color>
+    <color name="launcher_background">#FF0F6E73</color>
+</resources>
