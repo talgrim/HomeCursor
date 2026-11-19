@@ -1,3 +1,4 @@
+using HomeCursor.Core.Diagnostics;
 using HomeCursor.Core.Input;
 using HomeCursor.Core.Networking;
 using HomeCursor.Core.Sessions;
@@ -46,6 +47,22 @@ public sealed class ServiceCollectionExtensionsTests
         using var provider = BuildProvider(settings);
 
         Assert.Equal(12345, provider.GetRequiredService<IOptions<HostSettings>>().Value.TcpPort);
+    }
+
+    [Fact]
+    public void PointerDiagnostics_AreOffByDefault()
+    {
+        using var provider = BuildProvider();
+
+        Assert.IsType<NullPointerDiagnostics>(provider.GetRequiredService<IPointerDiagnostics>());
+    }
+
+    [Fact]
+    public void PointerDiagnostics_WhenEnabled_ReportStats()
+    {
+        using var provider = BuildProvider(new HostSettings { DiagnosticsEnabled = true });
+
+        Assert.IsType<PointerStatsReporter>(provider.GetRequiredService<IPointerDiagnostics>());
     }
 
     [Fact]

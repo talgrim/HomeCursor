@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using HomeCursor.Core.Diagnostics;
 using HomeCursor.Core.Networking;
 using HomeCursor.Core.Sessions;
 using HomeCursor.Core.Settings;
@@ -26,7 +27,7 @@ public sealed class UdpPointerReceiverTests : IAsyncLifetime
 
     public UdpPointerReceiverTests()
     {
-        _receiver = new UdpPointerReceiver(Options.Create(_settings), _gate, _dispatcher, NullLogger<UdpPointerReceiver>.Instance);
+        _receiver = new UdpPointerReceiver(Options.Create(_settings), _gate, _dispatcher, NullPointerDiagnostics.Instance, NullLogger<UdpPointerReceiver>.Instance);
     }
 
     public Task InitializeAsync() => _receiver.StartAsync(CancellationToken.None);
@@ -150,7 +151,7 @@ public sealed class UdpPointerReceiverTests : IAsyncLifetime
     public async Task StartAsync_WhenPortIsInUse_Throws()
     {
         var receiver = new UdpPointerReceiver(
-            Options.Create(_settings), _gate, _dispatcher, NullLogger<UdpPointerReceiver>.Instance);
+            Options.Create(_settings), _gate, _dispatcher, NullPointerDiagnostics.Instance, NullLogger<UdpPointerReceiver>.Instance);
 
         await Assert.ThrowsAsync<SocketException>(() => receiver.StartAsync(CancellationToken.None));
     }
