@@ -80,9 +80,17 @@ cd src/client
 
 ## Releasing
 
-Bump the version in `src/host/HomeCursor.Host.Tray/HomeCursor.Host.Tray.csproj` (`Version`) and in
-`src/client/app/build.gradle.kts` (`versionName`, and `versionCode` which must increase on every release), and update
-[CHANGELOG.md](CHANGELOG.md).
+Releases are automated with [release-please](https://github.com/googleapis/release-please). Merge `develop` into
+`main`; the `Release` workflow then opens (or updates) a release PR on `main` that bumps the version in
+`HomeCursor.Host.Tray.csproj` and `src/client/app/build.gradle.kts` (`versionCode` is derived from the version) and
+writes [CHANGELOG.md](CHANGELOG.md) from the Conventional Commits (`feat` = minor, `fix` = patch, `!` = major).
+Merging that PR tags the release, builds the host zip and the signed APK and publishes both to
+[wip.talgrim.dev](https://wip.talgrim.dev) (and so to the talgrim.dev download links). After that, merge `main` back
+into `develop` so the bumped version is there too. Repository secrets used: `WIP_FLY_API_TOKEN`,
+`ANDROID_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. The repository setting "Allow GitHub
+Actions to create and approve pull requests" must be on for the release PR.
+
+To build by hand:
 
 **Host** (Windows zip with a self-contained single-file exe, no .NET install needed):
 
