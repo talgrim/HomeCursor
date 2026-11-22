@@ -94,6 +94,14 @@ into `develop` so the bumped version is there too. Repository secrets used: `WIP
 `ANDROID_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. The repository setting "Allow GitHub
 Actions to create and approve pull requests" must be on for the release PR.
 
+**Update signing.** Hosts only install an update whose signature fits the public key built into them
+(`ReleaseSigningKey.cs`), so someone who can only upload to the download server cannot push a program to users' PCs.
+The `Release` workflow signs the host zip with `scripts/sign-host-update.sh` and publishes `<zip>.sig` before the zip;
+the private key (ECDSA P-256, PEM) is the repository secret `UPDATE_SIGNING_KEY` and a release without it fails. Back
+the key up. To make a new pair, run the two `openssl` commands in the script's header, put the public half into
+`ReleaseSigningKey.cs` and the private half into the secret; hosts built with the old key can then no longer update
+by themselves and have to be installed by hand once.
+
 To build by hand:
 
 **Host** (Windows zip with a self-contained single-file exe, no .NET install needed):
