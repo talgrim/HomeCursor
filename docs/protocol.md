@@ -93,7 +93,8 @@ The client then connects to `<reply source address>:<tcpPort>`.
 ## Host settings
 
 The Windows host reads `settings.json` from its own directory at startup. The file ships with the app (source:
-`src/host/HomeCursor.Host.Tray/settings.json`); if it is missing, it is recreated with defaults:
+`src/host/HomeCursor.Host.Tray/settings.json`); if it is missing, it is recreated with defaults. The tray's **Settings…**
+window edits the file (it changes only the values that were changed, so comments and unknown keys stay):
 
 ```json
 {
@@ -106,7 +107,10 @@ The Windows host reads `settings.json` from its own directory at startup. The fi
   "HeartbeatTimeoutSeconds": 15,
   "NotifyOnClientConnection": true,
   "NotifyOnClientDisconnection": false,
-  "DiagnosticsEnabled": false
+  "CheckForUpdates": true,
+  "UpdateManifestUrl": "https://wip.talgrim.dev/files/manifest.json",
+  "DiagnosticsEnabled": false,
+  "DiagnosticsLogDirectory": null
 }
 ```
 
