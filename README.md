@@ -71,6 +71,8 @@ dotnet run --project HomeCursor.Host.Tray
 
 The host checks for a newer release when it starts and then once a day (`CheckForUpdates` in `settings.json`, on by default). When there is one, the tray shows a notification and an **Update to X** menu item; confirming it downloads the new version, replaces the exe (your `settings.json` is kept) and restarts the host. **Check for updates** in the tray menu looks right away.
 
+**Settings…** in the tray menu opens a window for the name shown on the phone, the notifications, the ports, the update check and the diagnostics log. Changes apply at once (a port change restarts the host and disconnects the phone; the diagnostics log needs a restart of the app) and are written to `settings.json`, keeping your comments. Bind address, ping and heartbeat timings and the update manifest URL are only set in the file.
+
 ### Client
 
 Requirements: [Android Studio](https://developer.android.com/studio), an Android device or emulator.

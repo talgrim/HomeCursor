@@ -136,4 +136,66 @@ public sealed class UpdateMonitorTests
 
         Assert.Same(Release, await monitor.CheckNowAsync());
     }
+
+    private UpdateMonitor Create(SettingsHolder holder, TimeSpan checkInterval) =>
+        new(_checker, _store, holder, NullLogger<UpdateMonitor>.Instance, TimeProvider.System, checkInterval);
+
+    [Fact]
+    public async Task Refresh_SwitchedOn_StartsTheChecks()
+    {
+        var holder = new SettingsHolder(new HostSettings { CheckForUpdates = false });
+        using var monitor = Create(holder, TimeSpan.FromMilliseconds(50));
+        monitor.Start();
+
+        holder.Update(new HostSettings { CheckForUpdates = true });
+        monitor.Refresh();
+
+        await Wait.UntilAsync(() => _checker.Calls >= 2);
+    }
+
+    [Fact]
+    public async Task Refresh_SwitchedOff_StopsTheChecks()
+    {
+        var holder = new SettingsHolder(new HostSettings { CheckForUpdates = true });
+        using var monitor = Create(holder, TimeSpan.FromMilliseconds(50));
+        monitor.Start();
+        await Wait.UntilAsync(() => _checker.Calls >= 2);
+
+        holder.Update(new HostSettings { CheckForUpdates = false });
+        monitor.Refresh();
+        await Task.Delay(100); // lets a check that was already running finish
+        var callsAfterStop = _checker.Calls;
+        await Task.Delay(300);
+
+        Assert.Equal(callsAfterStop, _checker.Calls);
+    }
+
+    [Fact]
+    public async Task Refresh_SwitchedOffAndOnAgain_ResumesTheChecks()
+    {
+        var holder = new SettingsHolder(new HostSettings { CheckForUpdates = true });
+        using var monitor = Create(holder, TimeSpan.FromMilliseconds(50));
+        monitor.Start();
+        holder.Update(new HostSettings { CheckForUpdates = false });
+        monitor.Refresh();
+        await Task.Delay(100);
+        var callsWhileOff = _checker.Calls;
+
+        holder.Update(new HostSettings { CheckForUpdates = true });
+        monitor.Refresh();
+
+        await Wait.UntilAsync(() => _checker.Calls >= callsWhileOff + 2);
+    }
+
+    [Fact]
+    public void Refresh_AfterDispose_DoesNothing()
+    {
+        var holder = new SettingsHolder(new HostSettings { CheckForUpdates = true });
+        var monitor = Create(holder, TimeSpan.FromMilliseconds(50));
+        monitor.Dispose();
+
+        monitor.Refresh();
+
+        Assert.Equal(0, _checker.Calls);
+    }
 }

@@ -14,7 +14,7 @@ namespace HomeCursor.Core.Networking;
 /// </summary>
 public sealed class DiscoveryBeacon : HostLoopBase
 {
-    private readonly HostSettings _settings;
+    private readonly IOptions<HostSettings> _options;
     private readonly ISessionGate _gate;
     private readonly ILogger<DiscoveryBeacon> _logger;
     private UdpClient? _udp;
@@ -22,7 +22,7 @@ public sealed class DiscoveryBeacon : HostLoopBase
     public DiscoveryBeacon(IOptions<HostSettings> settings, ISessionGate gate, ILogger<DiscoveryBeacon> logger)
         : base(logger)
     {
-        _settings = settings.Value;
+        _options = settings;
         _gate = gate;
         _logger = logger;
     }
@@ -31,9 +31,10 @@ public sealed class DiscoveryBeacon : HostLoopBase
 
     protected override void Bind()
     {
-        _udp = new UdpClient(new IPEndPoint(_settings.GetBindAddress(), _settings.DiscoveryPort));
+        var settings = _options.Value;
+        _udp = new UdpClient(new IPEndPoint(settings.GetBindAddress(), settings.DiscoveryPort));
         _logger.LogInformation(
-            "Answering discovery probes on UDP {Address}:{Port}", _settings.BindAddress, _settings.DiscoveryPort);
+            "Answering discovery probes on UDP {Address}:{Port}", settings.BindAddress, settings.DiscoveryPort);
     }
 
     protected override async Task RunIterationAsync(CancellationToken cancellationToken)
@@ -53,11 +54,12 @@ public sealed class DiscoveryBeacon : HostLoopBase
             return;
         }
 
+        var settings = _options.Value;
         var reply = new DiscoveryReplyMessage(
             ProtocolDefaults.Version,
-            _settings.HostName,
-            (ushort)_settings.TcpPort,
-            (ushort)_settings.UdpPort,
+            settings.HostName,
+            (ushort)settings.TcpPort,
+            (ushort)settings.UdpPort,
             _gate.IsBusy);
         var bytes = DiscoveryPacket.Encode(reply);
 

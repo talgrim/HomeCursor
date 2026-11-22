@@ -101,4 +101,185 @@ public sealed class JsonFileSettingsProviderTests : IDisposable
 
         Assert.Throws<SettingsException>(() => CreateProvider().Load());
     }
+
+    [Fact]
+    public void Save_ChangedValue_KeepsCommentsAndUnknownKeys()
+    {
+        WriteFile("""
+            {
+              // where the phone connects
+              "TcpPort": 47800, /* default */
+              "Extra": { "list": [1, 2, "x"] },
+              "HostName": "Old"
+            }
+            """);
+
+        CreateProvider().Save(new HostSettings { TcpPort = 5000, HostName = "New" });
+
+        Assert.Equal("""
+            {
+              // where the phone connects
+              "TcpPort": 5000, /* default */
+              "Extra": { "list": [1, 2, "x"] },
+              "HostName": "New"
+            }
+            """, File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_NothingChanged_LeavesFileUntouched()
+    {
+        const string Original = "{ // note\n  \"TcpPort\": 47800,\n}";
+        WriteFile(Original);
+
+        CreateProvider().Save(new HostSettings());
+
+        Assert.Equal(Original, File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_KeyDiffersInCase_UpdatesIt()
+    {
+        WriteFile("""{ "tcpport": 1000 }""");
+
+        CreateProvider().Save(new HostSettings { TcpPort = 2000 });
+
+        Assert.Equal("""{ "tcpport": 2000 }""", File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_MissingKeyWithNonDefaultValue_AddsIt()
+    {
+        WriteFile("{\n  \"TcpPort\": 47800\n}");
+
+        CreateProvider().Save(new HostSettings { NotifyOnClientConnection = false });
+
+        Assert.Equal("{\n  \"TcpPort\": 47800,\n  \"NotifyOnClientConnection\": false\n}", File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_MissingKeyWithDefaultValue_DoesNotAddIt()
+    {
+        WriteFile("""{ "TcpPort": 47800 }""");
+
+        CreateProvider().Save(new HostSettings { HostName = Environment.MachineName });
+
+        Assert.Equal("""{ "TcpPort": 47800 }""", File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_EmptyObject_AddsKeysAndKeepsTheBraceOnItsOwnLine()
+    {
+        WriteFile("{\n}");
+
+        CreateProvider().Save(new HostSettings { TcpPort = 5000, DiagnosticsEnabled = true });
+
+        Assert.Equal("{\n  \"TcpPort\": 5000,\n  \"DiagnosticsEnabled\": true\n}", File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_EmptyObjectOnOneLine_PutsTheBraceOnItsOwnLine()
+    {
+        WriteFile("{}");
+
+        CreateProvider().Save(new HostSettings { TcpPort = 5000 });
+
+        Assert.Equal("{\n  \"TcpPort\": 5000\n}", File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_FileWithTrailingCommaAndCrLf_StaysValidAndKeepsLineEndings()
+    {
+        WriteFile("{\r\n  \"TcpPort\": 47800,\r\n}");
+
+        CreateProvider().Save(new HostSettings { UdpPort = 6000 });
+
+        var text = File.ReadAllText(_path);
+        Assert.Equal("{\r\n  \"TcpPort\": 47800,\r\n  \"UdpPort\": 6000,\r\n}", text);
+        Assert.Equal(6000, CreateProvider().Load().UdpPort);
+    }
+
+    [Fact]
+    public void Save_NonAsciiHostName_StaysReadableInTheFile()
+    {
+        WriteFile("""{ "HostName": "Old" }""");
+
+        CreateProvider().Save(new HostSettings { HostName = "Büro" });
+
+        Assert.Equal("""{ "HostName": "Büro" }""", File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_ThenLoad_ReturnsTheSavedSettings()
+    {
+        WriteFile("""
+            { "BindAddress": "127.0.0.1", "PingIntervalSeconds": 2, "HeartbeatTimeoutSeconds": 9 // kept
+            }
+            """);
+        var settings = CreateProvider().Load() with
+        {
+            HostName = "Study",
+            TcpPort = 5000,
+            NotifyOnClientDisconnection = true,
+            CheckForUpdates = false,
+            DiagnosticsEnabled = true,
+            DiagnosticsLogDirectory = @"C:\Logs"
+        };
+
+        CreateProvider().Save(settings);
+
+        Assert.Equal(settings, CreateProvider().Load());
+    }
+
+    [Fact]
+    public void Save_MissingFile_WritesAllSettings()
+    {
+        var settings = new HostSettings { HostName = "Study", TcpPort = 5000 };
+
+        CreateProvider().Save(settings);
+
+        Assert.Equal(settings, CreateProvider().Load());
+    }
+
+    [Fact]
+    public void Save_InvalidSettings_ThrowsAndLeavesFileUntouched()
+    {
+        WriteFile("""{ "TcpPort": 47800 }""");
+
+        var ex = Assert.Throws<SettingsException>(() => CreateProvider().Save(new HostSettings { TcpPort = 0 }));
+
+        Assert.Contains(nameof(HostSettings.TcpPort), ex.Message);
+        Assert.Equal("""{ "TcpPort": 47800 }""", File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_MalformedFile_ThrowsAndDoesNotOverwriteIt()
+    {
+        WriteFile("{ \"TcpPort\": ");
+
+        var ex = Assert.Throws<SettingsException>(() => CreateProvider().Save(new HostSettings { TcpPort = 5000 }));
+
+        Assert.Contains(_path, ex.Message);
+        Assert.Equal("{ \"TcpPort\": ", File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_FileIsNotAnObject_ThrowsAndDoesNotOverwriteIt()
+    {
+        WriteFile("[1, 2]");
+
+        Assert.Throws<SettingsException>(() => CreateProvider().Save(new HostSettings { TcpPort = 5000 }));
+
+        Assert.Equal("[1, 2]", File.ReadAllText(_path));
+    }
+
+    [Fact]
+    public void Save_LeavesNoTemporaryFileBehind()
+    {
+        WriteFile("{}");
+
+        CreateProvider().Save(new HostSettings { TcpPort = 5000 });
+
+        Assert.Equal([_path], Directory.GetFiles(_directory));
+    }
 }

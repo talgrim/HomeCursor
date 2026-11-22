@@ -18,7 +18,7 @@ namespace HomeCursor.Core.Networking;
 /// </summary>
 public sealed class UdpPointerReceiver : HostLoopBase
 {
-    private readonly HostSettings _settings;
+    private readonly IOptions<HostSettings> _options;
     private readonly ISessionGate _gate;
     private readonly IMessageDispatcher _dispatcher;
     private readonly IPointerDiagnostics _diagnostics;
@@ -33,7 +33,7 @@ public sealed class UdpPointerReceiver : HostLoopBase
         ILogger<UdpPointerReceiver> logger)
         : base(logger)
     {
-        _settings = settings.Value;
+        _options = settings;
         _gate = gate;
         _dispatcher = dispatcher;
         _diagnostics = diagnostics;
@@ -44,8 +44,9 @@ public sealed class UdpPointerReceiver : HostLoopBase
 
     protected override void Bind()
     {
-        _udp = new UdpClient(new IPEndPoint(_settings.GetBindAddress(), _settings.UdpPort));
-        _logger.LogInformation("Receiving pointer data on UDP {Address}:{Port}", _settings.BindAddress, _settings.UdpPort);
+        var settings = _options.Value;
+        _udp = new UdpClient(new IPEndPoint(settings.GetBindAddress(), settings.UdpPort));
+        _logger.LogInformation("Receiving pointer data on UDP {Address}:{Port}", settings.BindAddress, settings.UdpPort);
     }
 
     protected override async Task RunIterationAsync(CancellationToken cancellationToken)

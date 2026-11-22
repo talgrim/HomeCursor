@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using HomeCursor.Core.Sessions;
 using HomeCursor.Core.Updates;
 using Microsoft.Extensions.Logging;
@@ -12,9 +11,6 @@ namespace HomeCursor.Host.Tray;
 /// </summary>
 internal sealed class UpdateTrayController : IDisposable
 {
-    /// <summary>Command-line argument that tells a freshly started host to wait for the previous one to exit.</summary>
-    public const string RestartedArgument = "--after-update";
-
     private readonly NotifyIcon _notifyIcon;
     private readonly IUpdateMonitor _monitor;
     private readonly IUpdateInstaller _installer;
@@ -195,13 +191,8 @@ internal sealed class UpdateTrayController : IDisposable
 
     private void Restart()
     {
-        try
+        if (!ApplicationRestarter.TryStart(_environment.ExecutablePath, _logger))
         {
-            Process.Start(new ProcessStartInfo(_environment.ExecutablePath, RestartedArgument) { UseShellExecute = false });
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
-        {
-            _logger.LogError(ex, "The updated host could not be started");
             ShowBalloon("Update installed", "Start HomeCursor again to use the new version.", ToolTipIcon.Warning);
         }
 

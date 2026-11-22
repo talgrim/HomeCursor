@@ -97,5 +97,9 @@ public sealed class ServiceCollectionExtensionsTests
     private sealed class StubSettingsProvider(HostSettings settings) : ISettingsProvider
     {
         public HostSettings Load() => settings;
+
+        public void Save(HostSettings settingsToSave)
+        {
+        }
     }
 }

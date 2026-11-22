@@ -34,7 +34,7 @@ public sealed record HostSettings
     public bool NotifyOnClientConnection { get; init; } = true;
 
     /// <summary>Whether the host shows a notification when a client disconnects.</summary>
-    public bool NotifyOnClientDisconnection { get; init; } = true;
+    public bool NotifyOnClientDisconnection { get; init; }
 
     /// <summary>
     /// Whether the host looks for a newer release (at start and then once a day) and offers to install it.
@@ -61,48 +61,66 @@ public sealed record HostSettings
     /// <exception cref="SettingsException">A value is out of range.</exception>
     public void Validate()
     {
+        var first = GetErrors().FirstOrDefault();
+        if (first is not null)
+        {
+            throw new SettingsException(first.Message);
+        }
+    }
+
+    /// <summary>Every problem with the current values, in the order they are checked. Empty when the settings are valid.</summary>
+    public IReadOnlyList<SettingsError> GetErrors()
+    {
+        var errors = new List<SettingsError>();
+
         if (!IPAddress.TryParse(BindAddress, out _))
         {
-            throw new SettingsException($"{nameof(BindAddress)} '{BindAddress}' is not a valid IP address.");
+            errors.Add(new(nameof(BindAddress), $"{nameof(BindAddress)} '{BindAddress}' is not a valid IP address."));
         }
 
-        ValidatePort(nameof(TcpPort), TcpPort);
-        ValidatePort(nameof(UdpPort), UdpPort);
-        ValidatePort(nameof(DiscoveryPort), DiscoveryPort);
+        ValidatePort(errors, nameof(TcpPort), TcpPort);
+        ValidatePort(errors, nameof(UdpPort), UdpPort);
+        ValidatePort(errors, nameof(DiscoveryPort), DiscoveryPort);
 
         if (UdpPort == DiscoveryPort)
         {
-            throw new SettingsException($"{nameof(UdpPort)} and {nameof(DiscoveryPort)} must be different.");
+            errors.Add(new(nameof(DiscoveryPort), $"{nameof(UdpPort)} and {nameof(DiscoveryPort)} must be different."));
         }
 
         if (string.IsNullOrWhiteSpace(HostName) || HostName.Length > MaxHostNameLength)
         {
-            throw new SettingsException($"{nameof(HostName)} must be 1-{MaxHostNameLength} characters long.");
+            errors.Add(new(nameof(HostName), $"{nameof(HostName)} must be 1-{MaxHostNameLength} characters long."));
         }
 
         if (PingIntervalSeconds is < 1 or > byte.MaxValue)
         {
-            throw new SettingsException($"{nameof(PingIntervalSeconds)} must be between 1 and {byte.MaxValue}.");
+            errors.Add(new(
+                nameof(PingIntervalSeconds), $"{nameof(PingIntervalSeconds)} must be between 1 and {byte.MaxValue}."));
         }
 
         if (!Uri.TryCreate(UpdateManifestUrl, UriKind.Absolute, out var manifestUri) ||
             manifestUri.Scheme is not ("http" or "https"))
         {
-            throw new SettingsException($"{nameof(UpdateManifestUrl)} '{UpdateManifestUrl}' is not a valid http(s) address.");
+            errors.Add(new(
+                nameof(UpdateManifestUrl),
+                $"{nameof(UpdateManifestUrl)} '{UpdateManifestUrl}' is not a valid http(s) address."));
         }
 
         if (HeartbeatTimeoutSeconds <= PingIntervalSeconds)
         {
-            throw new SettingsException(
-                $"{nameof(HeartbeatTimeoutSeconds)} must be greater than {nameof(PingIntervalSeconds)}.");
+            errors.Add(new(
+                nameof(HeartbeatTimeoutSeconds),
+                $"{nameof(HeartbeatTimeoutSeconds)} must be greater than {nameof(PingIntervalSeconds)}."));
         }
+
+        return errors;
     }
 
-    private static void ValidatePort(string name, int port)
+    private static void ValidatePort(List<SettingsError> errors, string name, int port)
     {
         if (port is < 1 or > ushort.MaxValue)
         {
-            throw new SettingsException($"{name} must be between 1 and {ushort.MaxValue}.");
+            errors.Add(new(name, $"{name} must be between 1 and {ushort.MaxValue}."));
         }
     }
 }
