@@ -63,4 +63,40 @@ public class HostSettingsTests
     {
         Assert.Equal(HostSettings.DefaultUpdateManifestUrl, new HostSettings().UpdateManifestUrl);
     }
+
+    [Fact]
+    public void GetErrors_ValidSettings_ReturnsNothing()
+    {
+        Assert.Empty(new HostSettings().GetErrors());
+    }
+
+    [Fact]
+    public void GetErrors_SeveralProblems_ReportsEachWithItsProperty()
+    {
+        var settings = new HostSettings { TcpPort = 0, HostName = " " };
+
+        var errors = settings.GetErrors();
+
+        Assert.Equal([nameof(HostSettings.TcpPort), nameof(HostSettings.HostName)], errors.Select(e => e.Property));
+    }
+
+    [Fact]
+    public void GetErrors_UdpPortEqualsDiscoveryPort_BlamesDiscoveryPort()
+    {
+        var settings = new HostSettings { UdpPort = 6000, DiscoveryPort = 6000 };
+
+        var error = Assert.Single(settings.GetErrors());
+
+        Assert.Equal(nameof(HostSettings.DiscoveryPort), error.Property);
+    }
+
+    [Fact]
+    public void Validate_SeveralProblems_ThrowsTheFirstMessage()
+    {
+        var settings = new HostSettings { TcpPort = 0, HostName = " " };
+
+        var ex = Assert.Throws<SettingsException>(settings.Validate);
+
+        Assert.Equal(settings.GetErrors()[0].Message, ex.Message);
+    }
 }
