@@ -9,6 +9,7 @@ import com.homecursor.client.shortcuts.DefaultShortcuts
 import com.homecursor.client.shortcuts.Shortcut
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -139,5 +140,21 @@ class ShortcutsViewModelTest {
         viewModel.restoreDefaults()
 
         assertEquals(0, store.saveCount)
+    }
+
+    @Test
+    fun isOpen_startsClosed() {
+        assertFalse(viewModel().isOpen.value)
+    }
+
+    @Test
+    fun openAndClose_toggleIsOpen() {
+        val viewModel = viewModel()
+
+        viewModel.open()
+        assertTrue(viewModel.isOpen.value)
+
+        viewModel.close()
+        assertFalse(viewModel.isOpen.value)
     }
 }

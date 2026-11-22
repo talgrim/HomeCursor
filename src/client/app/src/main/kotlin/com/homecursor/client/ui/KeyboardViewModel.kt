@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 
 /** How the on-screen keyboard sends what is typed. */
 enum class KeyboardMode {
-    /** Every key goes to the host at once, as a key press. Supports shortcuts and held modifiers. */
+    /** Every key goes to the host at once, as a key press. Supports shortcuts and modifiers held over several keys. */
     RealTime,
 
     /** Text is typed into a field on the phone (any language, with the phone's own keyboard) and sent as a whole. */
@@ -19,9 +19,10 @@ enum class KeyboardMode {
 }
 
 /**
- * State and input of the full-screen on-screen keyboard (shown in landscape). Modifier keys are sticky: a tap holds
- * the modifier on the host until the next ordinary key has been pressed (or the modifier is tapped again), which is
- * how Ctrl+C is typed on a touch screen.
+ * State and input of the full-screen on-screen keyboard (shown in landscape). Modifier keys are latched: a tap holds
+ * the modifier on the host through any number of ordinary keys until it is tapped again, which is how Ctrl+C, Win and
+ * the arrows (to move a window), a run of capitals with Shift or Alt+Tab (to cycle through the windows) are typed on
+ * a touch screen. Closing the keyboard, leaving the foreground, switching the mode and sending text release them.
  *
  * Call from the main thread. Survives rotation, which is what makes the keyboard stay open while the phone turns.
  */
@@ -58,7 +59,7 @@ class KeyboardViewModel(private val inputSender: StateFlow<InputSender>) : ViewM
         mutableMode.value = mode
     }
 
-    /** A key of the keyboard was tapped. A modifier is latched or unlatched, any other key is typed. */
+    /** A key of the keyboard was tapped. A modifier is latched or unlatched, any other key is typed and leaves the held modifiers held. */
     fun onKeyTapped(key: SpecialKey) {
         if (key.isModifier) {
             toggleModifier(key)
@@ -67,7 +68,6 @@ class KeyboardViewModel(private val inputSender: StateFlow<InputSender>) : ViewM
         val sender = inputSender.value
         sender.sendKey(key, true)
         sender.sendKey(key, false)
-        releaseModifiers()
     }
 
     /** Types [text] on the host (compose mode). Held modifiers do not apply to it, so they are released first. */

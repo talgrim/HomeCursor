@@ -1,5 +1,6 @@
 package com.homecursor.client.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,9 +8,10 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,13 +20,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -50,14 +50,14 @@ import com.homecursor.client.ui.theme.HomeCursorTheme
 import com.homecursor.client.ui.theme.Spacing
 
 /**
- * The shortcut list (portrait). Tapping a shortcut runs it on the host. "Edit" switches the list to managing mode:
- * edit, delete and move each shortcut, add a new one, or bring back the default ones.
+ * The shortcut list (portrait), a screen of its own with a back button. Tapping a shortcut runs it on the host.
+ * "Edit" switches the list to managing mode: edit, delete and move each shortcut, add a new one, or bring back the
+ * default ones. System back leads to the trackpad.
  *
  * Stateless apart from the managing/editor state, which is only about what is on screen.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShortcutsSheet(
+fun ShortcutsScreen(
     shortcuts: List<Shortcut>,
     onRun: (Shortcut) -> Unit,
     onAdd: (name: String, keys: List<SpecialKey>) -> Unit,
@@ -66,28 +66,31 @@ fun ShortcutsSheet(
     onMove: (id: String, offset: Int) -> Unit,
     onRestoreDefaults: () -> Unit,
     onOpenKeyboard: () -> Unit,
-    onDismiss: () -> Unit,
+    onBack: () -> Unit,
 ) {
     var managing by rememberSaveable { mutableStateOf(false) }
     // The id of the shortcut being edited, or "" for a new one; null when the editor is closed.
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     val canRestore = DefaultShortcuts.all.any { default -> shortcuts.none { it.id == default.id } }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        ShortcutsContent(
-            shortcuts = shortcuts,
-            managing = managing,
-            canRestore = canRestore,
-            onToggleManaging = { managing = !managing },
-            onRun = onRun,
-            onEdit = { editingId = it.id },
-            onAdd = { editingId = NEW_SHORTCUT },
-            onDelete = onDelete,
-            onMove = onMove,
-            onRestoreDefaults = onRestoreDefaults,
-            onOpenKeyboard = onOpenKeyboard,
-        )
-    }
+    BackHandler(onBack = onBack)
+    // Like the trackpad: someone tapping shortcuts one after another should not have the screen go dark.
+    KeepScreenOn()
+
+    ShortcutsContent(
+        shortcuts = shortcuts,
+        managing = managing,
+        canRestore = canRestore,
+        onBack = onBack,
+        onToggleManaging = { managing = !managing },
+        onRun = onRun,
+        onEdit = { editingId = it.id },
+        onAdd = { editingId = NEW_SHORTCUT },
+        onDelete = onDelete,
+        onMove = onMove,
+        onRestoreDefaults = onRestoreDefaults,
+        onOpenKeyboard = onOpenKeyboard,
+    )
 
     editingId?.let { id ->
         val existing = shortcuts.firstOrNull { it.id == id }
@@ -110,12 +113,13 @@ fun ShortcutsSheet(
 
 private const val NEW_SHORTCUT = ""
 
-/** What is inside the sheet: separate from the sheet itself so that it can be previewed. */
+/** What is on the screen: separate from the screen itself so that it can be previewed. */
 @Composable
 private fun ShortcutsContent(
     shortcuts: List<Shortcut>,
     managing: Boolean,
     canRestore: Boolean,
+    onBack: () -> Unit,
     onToggleManaging: () -> Unit,
     onRun: (Shortcut) -> Unit,
     onEdit: (Shortcut) -> Unit,
@@ -125,15 +129,12 @@ private fun ShortcutsContent(
     onRestoreDefaults: () -> Unit,
     onOpenKeyboard: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.xl)
-            .padding(bottom = Spacing.xl)
-            .navigationBarsPadding(),
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // The header stays in place while the list scrolls under it.
         Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.shortcuts_back))
+            }
             Text(
                 stringResource(R.string.shortcuts),
                 style = MaterialTheme.typography.titleLarge,
@@ -145,33 +146,42 @@ private fun ShortcutsContent(
                 TextButton(onClick = onToggleManaging) { Text(stringResource(R.string.shortcuts_edit)) }
             }
         }
-        Button(onClick = onOpenKeyboard, modifier = Modifier.fillMaxWidth()) {
-            Icon(painterResource(R.drawable.ic_keyboard), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-            Text(stringResource(R.string.open_keyboard))
-        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            Button(onClick = onOpenKeyboard, modifier = Modifier.fillMaxWidth()) {
+                Icon(painterResource(R.drawable.ic_keyboard), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(stringResource(R.string.open_keyboard))
+            }
 
-        shortcuts.forEachIndexed { index, shortcut ->
-            ShortcutRow(
-                shortcut = shortcut,
-                managing = managing,
-                canMoveUp = index > 0,
-                canMoveDown = index < shortcuts.lastIndex,
-                onRun = { onRun(shortcut) },
-                onEdit = { onEdit(shortcut) },
-                onDelete = { onDelete(shortcut.id) },
-                onMove = { onMove(shortcut.id, it) },
-            )
-        }
+            shortcuts.forEachIndexed { index, shortcut ->
+                ShortcutRow(
+                    shortcut = shortcut,
+                    managing = managing,
+                    canMoveUp = index > 0,
+                    canMoveDown = index < shortcuts.lastIndex,
+                    onRun = { onRun(shortcut) },
+                    onEdit = { onEdit(shortcut) },
+                    onDelete = { onDelete(shortcut.id) },
+                    onMove = { onMove(shortcut.id, it) },
+                )
+            }
 
-        OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
-            Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-            Text(stringResource(R.string.shortcut_add))
-        }
-        if (managing && canRestore) {
-            TextButton(onClick = onRestoreDefaults, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.shortcuts_restore_defaults))
+            OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+                Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(stringResource(R.string.shortcut_add))
+            }
+            if (managing && canRestore) {
+                TextButton(onClick = onRestoreDefaults, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.shortcuts_restore_defaults))
+                }
             }
         }
     }
@@ -323,11 +333,12 @@ private fun ShortcutsManagingDarkPreview() = ShortcutsPreview(darkTheme = true, 
 @Composable
 private fun ShortcutsPreview(darkTheme: Boolean, managing: Boolean) {
     HomeCursorTheme(darkTheme = darkTheme) {
-        Surface {
+        Surface(modifier = Modifier.height(640.dp)) {
             ShortcutsContent(
                 shortcuts = DefaultShortcuts.all.take(4),
                 managing = managing,
                 canRestore = true,
+                onBack = {},
                 onToggleManaging = {},
                 onRun = {},
                 onEdit = {},

@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.homecursor.client.R
@@ -108,12 +112,15 @@ fun KeyGrid(
 /** The gap between keys, and between the rows of keys. */
 private val KEY_GAP = Spacing.xs
 
+/** Diameter of the dot that marks a held modifier. */
+private val HELD_DOT_SIZE = 6.dp
+
 /** Height of the row of action keys next to the compose field. */
 private val ACTION_ROW_HEIGHT = 48.dp
 
 /**
- * One key. A held modifier (and a key while it is pressed) is shown in the primary colour; otherwise the colour
- * depends on its [KeyGroup].
+ * One key. A held modifier is shown in the tertiary (amber) colour with a dot in its corner, so it cannot be mistaken
+ * for a key that is only being pressed (primary colour); otherwise the colour depends on its [KeyGroup].
  */
 @Composable
 private fun KeyCap(
@@ -125,15 +132,21 @@ private fun KeyCap(
     val colors = MaterialTheme.colorScheme
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val highlighted = isHeld || isPressed
     val (restingContainer, restingContent) = key.restingColors()
-    val container by animateColorAsState(if (highlighted) colors.primary else restingContainer, label = "keyContainer")
-    val content by animateColorAsState(if (highlighted) colors.onPrimary else restingContent, label = "keyContent")
+    val (targetContainer, targetContent) = when {
+        isHeld -> colors.tertiary to colors.onTertiary
+        isPressed -> colors.primary to colors.onPrimary
+        else -> restingContainer to restingContent
+    }
+    val container by animateColorAsState(targetContainer, label = "keyContainer")
+    val content by animateColorAsState(targetContent, label = "keyContent")
+    val heldDescription = stringResource(R.string.keyboard_key_held)
 
     Box(
         modifier = modifier
             .clip(MaterialTheme.shapes.small)
             .background(container)
+            .semantics { if (isHeld) stateDescription = heldDescription }
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current, role = Role.Button) { onTapped(key) },
         contentAlignment = Alignment.Center,
     ) {
@@ -144,6 +157,16 @@ private fun KeyCap(
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
+        if (isHeld) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(Spacing.xs)
+                    .size(HELD_DOT_SIZE)
+                    .clip(CircleShape)
+                    .background(content),
+            )
+        }
     }
 }
 

@@ -52,6 +52,7 @@
     <string name="tutorial_settings_text">Change the pointer speed and the scroll direction, replay this tour, or disconnect from the PC.</string>
 
     <string name="shortcuts">Shortcuts</string>
+    <string name="shortcuts_back">Back to the trackpad</string>
     <string name="shortcuts_edit">Edit</string>
     <string name="shortcuts_done">Done</string>
     <string name="shortcuts_restore_defaults">Restore default shortcuts</string>
@@ -77,6 +78,7 @@
     <string name="keyboard_close">Close</string>
     <string name="keyboard_text_hint">Text to send to the PC</string>
     <string name="keyboard_send">Send</string>
+    <string name="keyboard_key_held">Held, tap again to release</string>
 
     <string name="hosts_on_network">PCs on this network</string>
     <string name="no_hosts_found">No PC found. Make sure HomeCursor is running on it and that both are on the same network, or enter its address below.</string>
