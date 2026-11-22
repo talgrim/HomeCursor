@@ -21,7 +21,10 @@ public class HostSettingsTests
         new HostSettings { HostName = new string('x', 65) },
         new HostSettings { PingIntervalSeconds = 0 },
         new HostSettings { PingIntervalSeconds = 256, HeartbeatTimeoutSeconds = 1000 },
-        new HostSettings { PingIntervalSeconds = 10, HeartbeatTimeoutSeconds = 10 }
+        new HostSettings { PingIntervalSeconds = 10, HeartbeatTimeoutSeconds = 10 },
+        new HostSettings { UpdateManifestUrl = "" },
+        new HostSettings { UpdateManifestUrl = "manifest.json" },
+        new HostSettings { UpdateManifestUrl = "ftp://example.test/manifest.json" }
     };
 
     [Theory]
@@ -47,5 +50,17 @@ public class HostSettingsTests
     public void NotifyOnClientDisconnection_DefaultsToTrue()
     {
         Assert.True(new HostSettings().NotifyOnClientDisconnection);
+    }
+
+    [Fact]
+    public void CheckForUpdates_DefaultsToTrue()
+    {
+        Assert.True(new HostSettings().CheckForUpdates);
+    }
+
+    [Fact]
+    public void UpdateManifestUrl_DefaultsToReleaseServer()
+    {
+        Assert.Equal(HostSettings.DefaultUpdateManifestUrl, new HostSettings().UpdateManifestUrl);
     }
 }
