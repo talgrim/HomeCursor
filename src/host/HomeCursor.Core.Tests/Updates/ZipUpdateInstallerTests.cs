@@ -10,8 +10,37 @@ namespace HomeCursor.Core.Tests.Updates;
 public sealed class ZipUpdateInstallerTests : IDisposable
 {
     private readonly TempDirectory _dir = new();
+    private readonly ECDsa _releaseKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
-    public void Dispose() => _dir.Dispose();
+    public void Dispose()
+    {
+        _releaseKey.Dispose();
+        _dir.Dispose();
+    }
+
+    private IUpdateSignatureVerifier ReleaseVerifier =>
+        new EcdsaUpdateSignatureVerifier(Convert.ToBase64String(_releaseKey.ExportSubjectPublicKeyInfo()));
+
+    private static string Sign(ECDsa key, Version version, byte[] zip) =>
+        Convert.ToBase64String(key.SignData(
+            UpdateSignature.GetPayload(version, Convert.ToHexString(SHA256.HashData(zip))),
+            HashAlgorithmName.SHA256,
+            DSASignatureFormat.Rfc3279DerSequence));
+
+    /// <summary>Serves the zip and, next to it, a signature (the release's own unless another is given).</summary>
+    private FakeHttpMessageHandler Serve(byte[] zip, string? signature = null, HttpStatusCode signatureStatus = HttpStatusCode.OK) =>
+        new(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith(".sig", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(signatureStatus)
+                {
+                    Content = new StringContent(signature ?? Sign(_releaseKey, new Version(1, 4, 0), zip))
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(zip) };
+        });
 
     private static byte[] CreateZip(params (string Name, string Content)[] entries)
     {
@@ -35,6 +64,7 @@ public sealed class ZipUpdateInstallerTests : IDisposable
         new(
             new HttpClient(handler),
             new UpdateEnvironment(new Version(1, 3, 0), executablePath ?? _dir.File("HomeCursor.exe"), _dir.File("state.json")),
+            ReleaseVerifier,
             NullLogger<ZipUpdateInstaller>.Instance);
 
     [Fact]
@@ -44,7 +74,7 @@ public sealed class ZipUpdateInstallerTests : IDisposable
         File.WriteAllText(_dir.File("settings.json"), "my settings");
         var zip = CreateZip(("HomeCursor.exe", "new exe"), ("settings.json", "default settings"), ("LICENSE", "text"));
 
-        await Create(FakeHttpMessageHandler.Serving(zip)).InstallAsync(InfoFor(zip));
+        await Create(Serve(zip)).InstallAsync(InfoFor(zip));
 
         Assert.Equal("new exe", File.ReadAllText(_dir.File("HomeCursor.exe")));
         Assert.Equal("old exe", File.ReadAllText(_dir.File("HomeCursor.exe.old")));
@@ -59,7 +89,7 @@ public sealed class ZipUpdateInstallerTests : IDisposable
         File.WriteAllText(_dir.File("HomeCursor.exe"), "old exe");
         var zip = CreateZip(("HomeCursor.exe", "new exe"));
 
-        await Create(FakeHttpMessageHandler.Serving(zip)).InstallAsync(InfoFor(zip, Convert.ToHexString(SHA256.HashData(zip))));
+        await Create(Serve(zip)).InstallAsync(InfoFor(zip, Convert.ToHexString(SHA256.HashData(zip))));
 
         Assert.Equal("new exe", File.ReadAllText(_dir.File("HomeCursor.exe")));
     }
@@ -71,7 +101,7 @@ public sealed class ZipUpdateInstallerTests : IDisposable
         var zip = CreateZip(("HomeCursor.exe", "new exe"));
 
         await Assert.ThrowsAsync<UpdateException>(() =>
-            Create(FakeHttpMessageHandler.Serving(zip)).InstallAsync(InfoFor(zip, new string('0', 64))));
+            Create(Serve(zip)).InstallAsync(InfoFor(zip, new string('0', 64))));
 
         Assert.Equal("old exe", File.ReadAllText(_dir.File("HomeCursor.exe")));
         Assert.False(File.Exists(_dir.File("HomeCursor.exe.old")));
@@ -84,7 +114,7 @@ public sealed class ZipUpdateInstallerTests : IDisposable
         File.WriteAllText(_dir.File("HomeCursor.exe"), "old exe");
         var zip = CreateZip(("readme.txt", "hello"));
 
-        await Assert.ThrowsAsync<UpdateException>(() => Create(FakeHttpMessageHandler.Serving(zip)).InstallAsync(InfoFor(zip)));
+        await Assert.ThrowsAsync<UpdateException>(() => Create(Serve(zip)).InstallAsync(InfoFor(zip)));
 
         Assert.Equal("old exe", File.ReadAllText(_dir.File("HomeCursor.exe")));
     }
@@ -95,7 +125,7 @@ public sealed class ZipUpdateInstallerTests : IDisposable
         File.WriteAllText(_dir.File("HomeCursor.exe"), "old exe");
         var junk = "not a zip"u8.ToArray();
 
-        await Assert.ThrowsAsync<UpdateException>(() => Create(FakeHttpMessageHandler.Serving(junk)).InstallAsync(InfoFor(junk)));
+        await Assert.ThrowsAsync<UpdateException>(() => Create(Serve(junk)).InstallAsync(InfoFor(junk)));
 
         Assert.Equal("old exe", File.ReadAllText(_dir.File("HomeCursor.exe")));
     }
@@ -116,11 +146,79 @@ public sealed class ZipUpdateInstallerTests : IDisposable
     public async Task InstallAsync_RunThroughDotnetHost_Throws()
     {
         var zip = CreateZip(("HomeCursor.exe", "new exe"));
-        var handler = FakeHttpMessageHandler.Serving(zip);
+        var handler = Serve(zip);
 
         await Assert.ThrowsAsync<UpdateException>(() =>
             Create(handler, _dir.File("dotnet.exe")).InstallAsync(InfoFor(zip)));
 
         Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task InstallAsync_SignatureMissing_LeavesExecutableUntouched()
+    {
+        File.WriteAllText(_dir.File("HomeCursor.exe"), "old exe");
+        var zip = CreateZip(("HomeCursor.exe", "new exe"));
+
+        var ex = await Assert.ThrowsAsync<UpdateException>(() =>
+            Create(Serve(zip, signatureStatus: HttpStatusCode.NotFound)).InstallAsync(InfoFor(zip)));
+
+        Assert.Contains("not signed", ex.Message);
+        Assert.Equal("old exe", File.ReadAllText(_dir.File("HomeCursor.exe")));
+        Assert.False(File.Exists(_dir.File("HomeCursor.exe.old")));
+    }
+
+    [Fact]
+    public async Task InstallAsync_SignedWithAnotherKey_IsRejected()
+    {
+        File.WriteAllText(_dir.File("HomeCursor.exe"), "old exe");
+        var zip = CreateZip(("HomeCursor.exe", "new exe"));
+        using var attacker = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+
+        await Assert.ThrowsAsync<UpdateException>(() =>
+            Create(Serve(zip, Sign(attacker, new Version(1, 4, 0), zip))).InstallAsync(InfoFor(zip)));
+
+        Assert.Equal("old exe", File.ReadAllText(_dir.File("HomeCursor.exe")));
+    }
+
+    [Fact]
+    public async Task InstallAsync_SignatureOfAnOlderVersion_IsRejected()
+    {
+        File.WriteAllText(_dir.File("HomeCursor.exe"), "old exe");
+        var zip = CreateZip(("HomeCursor.exe", "new exe"));
+
+        // A genuine signature for this very zip, but for version 1.2.0: replaying an old release as a new one.
+        await Assert.ThrowsAsync<UpdateException>(() =>
+            Create(Serve(zip, Sign(_releaseKey, new Version(1, 2, 0), zip))).InstallAsync(InfoFor(zip)));
+
+        Assert.Equal("old exe", File.ReadAllText(_dir.File("HomeCursor.exe")));
+    }
+
+    [Theory]
+    [InlineData("not base64!")]
+    [InlineData("")]
+    [InlineData("AAAA")]
+    public async Task InstallAsync_MalformedSignature_IsRejected(string signature)
+    {
+        File.WriteAllText(_dir.File("HomeCursor.exe"), "old exe");
+        var zip = CreateZip(("HomeCursor.exe", "new exe"));
+
+        await Assert.ThrowsAsync<UpdateException>(() => Create(Serve(zip, signature)).InstallAsync(InfoFor(zip)));
+
+        Assert.Equal("old exe", File.ReadAllText(_dir.File("HomeCursor.exe")));
+    }
+
+    [Fact]
+    public async Task InstallAsync_AsksForTheSignatureNextToTheZip()
+    {
+        File.WriteAllText(_dir.File("HomeCursor.exe"), "old exe");
+        var zip = CreateZip(("HomeCursor.exe", "new exe"));
+        var handler = Serve(zip);
+
+        await Create(handler).InstallAsync(InfoFor(zip));
+
+        Assert.Equal(
+            [new Uri("https://example.test/files/update.zip"), new Uri("https://example.test/files/update.zip.sig")],
+            handler.Requests);
     }
 }
