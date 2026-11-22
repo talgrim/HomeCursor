@@ -21,6 +21,7 @@ public static class UpdateServiceCollectionExtensions
         services.AddSingleton(_ => CreateHttpClient(environment));
 
         services.AddSingleton<IUpdateChecker, ManifestUpdateChecker>();
+        services.AddSingleton<IUpdateSignatureVerifier>(new EcdsaUpdateSignatureVerifier(ReleaseSigningKey.PublicKey));
         services.AddSingleton<IUpdateInstaller, ZipUpdateInstaller>();
         services.AddSingleton<UpdateMonitor>();
         services.AddSingleton<IUpdateMonitor>(sp => sp.GetRequiredService<UpdateMonitor>());
