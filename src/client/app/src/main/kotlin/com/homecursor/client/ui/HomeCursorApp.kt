@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -27,12 +28,20 @@ fun HomeCursorApp(
     tutorialViewModel: TutorialViewModel,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Locking the phone drops the connection (Idle) and the shortcuts screen is meant to survive that. When the
+    // reconnect fails, though, there is no connection to type into: go back to the trackpad for next time.
+    LaunchedEffect(state.status) {
+        if (state.status is ConnectionStatus.Failed) shortcutsViewModel.close()
+    }
     HomeCursorContent(
         state = state,
         onHostClick = viewModel::connectTo,
         onRescan = viewModel::rescan,
         onManualConnect = viewModel::connectManually,
-        onCancel = viewModel::cancelConnecting,
+        onCancel = {
+            shortcutsViewModel.close()
+            viewModel.cancelConnecting()
+        },
         connectedContent = { host ->
             ConnectedScreen(
                 host = host,
@@ -41,7 +50,10 @@ fun HomeCursorApp(
                 shortcutsViewModel = shortcutsViewModel,
                 tutorialViewModel = tutorialViewModel,
                 onDisconnect = viewModel::disconnect,
-                onForget = viewModel::forgetHost,
+                onForget = {
+                    shortcutsViewModel.close()
+                    viewModel.forgetHost()
+                },
             )
         },
     )

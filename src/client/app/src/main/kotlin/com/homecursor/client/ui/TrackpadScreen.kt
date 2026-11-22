@@ -419,7 +419,7 @@ private fun SettingsSheet(
 
 /** Keeps the screen on while the pad is shown: a trackpad that dims after 30 seconds of use is useless. */
 @Composable
-private fun KeepScreenOn() {
+internal fun KeepScreenOn() {
     val view = LocalView.current
     DisposableEffect(view) {
         view.keepScreenOn = true

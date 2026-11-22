@@ -25,6 +25,22 @@ class ShortcutsViewModel(
     private val mutableShortcuts = MutableStateFlow(store.load() ?: DefaultShortcuts.all)
     val shortcuts: StateFlow<List<Shortcut>> = mutableShortcuts.asStateFlow()
 
+    private val mutableIsOpen = MutableStateFlow(false)
+
+    /**
+     * Whether the shortcuts screen is the one shown. Kept here, not in a composable, so that it outlives the
+     * connected screen: locking the phone drops the connection and brings the screen back after the reconnect.
+     */
+    val isOpen: StateFlow<Boolean> = mutableIsOpen.asStateFlow()
+
+    fun open() {
+        mutableIsOpen.value = true
+    }
+
+    fun close() {
+        mutableIsOpen.value = false
+    }
+
     /** Sends the shortcut's keys to the host: all down in order, then all up in reverse. */
     fun run(shortcut: Shortcut) = shortcut.send(inputSender.value)
 
