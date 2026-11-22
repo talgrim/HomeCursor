@@ -7,6 +7,7 @@ composeBom = "2026.02.01"
 junit = "4.13.2"
 coroutines = "1.11.0"
 lifecycle = "2.11.0"
+orgJson = "20250107"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -21,6 +22,8 @@ androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lif
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+# The JVM unit tests need a real org.json: the one in android.jar is a stub that throws.
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

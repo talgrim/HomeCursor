@@ -87,6 +87,21 @@
     <string name="manual_address">PC address (e.g. 192.168.1.20)</string>
     <string name="manual_address_invalid">Enter an address like 192.168.1.20 or 192.168.1.20:47800</string>
 
+    <string name="updates">Updates</string>
+    <string name="current_version">Version %1$s</string>
+    <string name="update_available">HomeCursor %1$s is available</string>
+    <string name="update_to">Update to %1$s</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="check_for_updates_automatically">Check automatically</string>
+    <string name="check_for_updates_automatically_summary">Looks for a new version when the app starts, at most once a day.</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_downloading">Downloading the update…</string>
+    <string name="update_up_to_date">HomeCursor is up to date.</string>
+    <string name="update_check_failed">Could not check for updates. Try again later.</string>
+    <string name="update_failed">The update failed. Try again.</string>
+    <string name="update_needs_permission">Android asks you to allow HomeCursor to install apps once. Allow it, then come back and update.</string>
+    <string name="update_allow_install">Allow installing</string>
+
     <string name="failure_busy">Another device is already connected to %1$s.</string>
     <string name="failure_unsupported_version">%1$s runs an incompatible version of HomeCursor.</string>
     <string name="failure_unreachable">Could not reach %1$s.</string>

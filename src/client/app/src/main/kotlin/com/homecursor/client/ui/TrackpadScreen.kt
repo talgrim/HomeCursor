@@ -23,6 +23,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -68,6 +70,7 @@ import com.homecursor.client.input.TouchPoint
 import com.homecursor.client.protocol.MouseButton
 import com.homecursor.client.storage.TrackpadSettings
 import com.homecursor.client.ui.theme.Spacing
+import com.homecursor.client.update.UpdateUiState
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -94,6 +97,8 @@ fun TrackpadScreen(
     onForget: () -> Unit,
     tutorialTargets: TutorialTargets,
     onTutorial: () -> Unit,
+    updateState: UpdateUiState,
+    updateCallbacks: UpdateCallbacks,
 ) {
     KeepScreenOn()
     ClickHaptics(clickFeedback)
@@ -106,11 +111,11 @@ fun TrackpadScreen(
         if (maxWidth > maxHeight) {
             Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 buttons(true)
-                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, tutorialTargets, Modifier.weight(1f).fillMaxHeight())
+                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, updateState.offered != null, tutorialTargets, Modifier.weight(1f).fillMaxHeight())
             }
         } else {
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, tutorialTargets, Modifier.weight(1f).fillMaxWidth())
+                PadWithSettings(host, onTouch, onTouchCancelled, { menuOpen = true }, updateState.offered != null, tutorialTargets, Modifier.weight(1f).fillMaxWidth())
                 buttons(false)
             }
         }
@@ -128,6 +133,8 @@ fun TrackpadScreen(
                 menuOpen = false
                 onTutorial()
             },
+            updateState = updateState,
+            updateCallbacks = updateCallbacks,
             onDismiss = { menuOpen = false },
         )
     }
@@ -144,6 +151,7 @@ private fun PadWithSettings(
     onTouch: (Long, List<TouchPoint>) -> Unit,
     onTouchCancelled: () -> Unit,
     onSettings: () -> Unit,
+    updateAvailable: Boolean,
     tutorialTargets: TutorialTargets,
     modifier: Modifier = Modifier,
 ) {
@@ -154,11 +162,14 @@ private fun PadWithSettings(
             onClick = onSettings,
             modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.xs).tutorialTarget(tutorialTargets, TutorialTarget.Settings),
         ) {
-            Icon(
-                painterResource(R.drawable.ic_settings),
-                contentDescription = stringResource(R.string.menu),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            // A dot on the gear tells that the settings hold an update.
+            BadgedBox(badge = { if (updateAvailable) Badge() }) {
+                Icon(
+                    painterResource(R.drawable.ic_settings),
+                    contentDescription = stringResource(R.string.menu),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -373,6 +384,8 @@ private fun SettingsSheet(
     onDisconnect: () -> Unit,
     onForget: () -> Unit,
     onTutorial: () -> Unit,
+    updateState: UpdateUiState,
+    updateCallbacks: UpdateCallbacks,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -410,6 +423,8 @@ private fun SettingsSheet(
                 Text(stringResource(R.string.tutorial), style = MaterialTheme.typography.bodyLarge)
                 Text(stringResource(R.string.tutorial_summary), style = MaterialTheme.typography.bodySmall)
             }
+
+            UpdateSection(updateState, updateCallbacks)
 
             Button(onClick = onDisconnect, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.disconnect)) }
             TextButton(onClick = onForget, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.forget_host)) }

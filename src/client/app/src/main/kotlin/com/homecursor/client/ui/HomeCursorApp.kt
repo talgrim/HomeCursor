@@ -8,6 +8,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,8 +27,18 @@ fun HomeCursorApp(
     keyboardViewModel: KeyboardViewModel,
     shortcutsViewModel: ShortcutsViewModel,
     tutorialViewModel: TutorialViewModel,
+    updateViewModel: UpdateViewModel,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val updateState by updateViewModel.uiState.collectAsStateWithLifecycle()
+    val updateCallbacks = remember(updateViewModel) {
+        UpdateCallbacks(
+            onCheck = updateViewModel::checkNow,
+            onUpdate = updateViewModel::startUpdate,
+            onOpenInstallSettings = updateViewModel::openInstallPermissionSettings,
+            onChecksEnabledChanged = updateViewModel::onChecksEnabledChanged,
+        )
+    }
     // Locking the phone drops the connection (Idle) and the shortcuts screen is meant to survive that. When the
     // reconnect fails, though, there is no connection to type into: go back to the trackpad for next time.
     LaunchedEffect(state.status) {
@@ -42,6 +53,7 @@ fun HomeCursorApp(
             shortcutsViewModel.close()
             viewModel.cancelConnecting()
         },
+        updateBanner = { UpdateBanner(updateState, updateCallbacks) },
         connectedContent = { host ->
             ConnectedScreen(
                 host = host,
@@ -49,6 +61,8 @@ fun HomeCursorApp(
                 keyboardViewModel = keyboardViewModel,
                 shortcutsViewModel = shortcutsViewModel,
                 tutorialViewModel = tutorialViewModel,
+                updateState = updateState,
+                updateCallbacks = updateCallbacks,
                 onDisconnect = viewModel::disconnect,
                 onForget = {
                     shortcutsViewModel.close()
@@ -68,6 +82,7 @@ fun HomeCursorContent(
     onManualConnect: (String) -> Boolean,
     onCancel: () -> Unit,
     connectedContent: @Composable (HostEndpoint) -> Unit,
+    updateBanner: @Composable () -> Unit = {},
 ) {
     HomeCursorTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
@@ -93,6 +108,7 @@ fun HomeCursorContent(
                         onHostClick = onHostClick,
                         onRescan = onRescan,
                         onManualConnect = onManualConnect,
+                        updateBanner = updateBanner,
                     )
                 }
             }

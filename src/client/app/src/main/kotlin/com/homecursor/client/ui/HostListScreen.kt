@@ -68,9 +68,12 @@ internal fun HostListScreen(
     onHostClick: (DiscoveredHost) -> Unit,
     onRescan: () -> Unit,
     onManualConnect: (String) -> Boolean,
+    updateBanner: @Composable () -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
         AppHeader()
+
+        updateBanner()
 
         if (failure != null) ErrorBanner(failureMessage(failure.failure, failure.host.name))
 

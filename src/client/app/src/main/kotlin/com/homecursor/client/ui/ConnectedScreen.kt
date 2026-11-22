@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.homecursor.client.connection.HostEndpoint
+import com.homecursor.client.update.UpdateUiState
 
 /**
  * What is shown while connected: the trackpad, with the keyboard button leading to the shortcuts screen (portrait)
@@ -23,6 +24,8 @@ fun ConnectedScreen(
     keyboardViewModel: KeyboardViewModel,
     shortcutsViewModel: ShortcutsViewModel,
     tutorialViewModel: TutorialViewModel,
+    updateState: UpdateUiState,
+    updateCallbacks: UpdateCallbacks,
     onDisconnect: () -> Unit,
     onForget: () -> Unit,
 ) {
@@ -86,6 +89,8 @@ fun ConnectedScreen(
                 onForget = onForget,
                 tutorialTargets = tutorialTargets,
                 onTutorial = tutorialViewModel::start,
+                updateState = updateState,
+                updateCallbacks = updateCallbacks,
             )
         }
 
