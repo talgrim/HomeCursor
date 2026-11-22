@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHostLoop, TcpControlListener>();
 
         services.AddSingleton<IHostService, HostService>();
+        services.AddSingleton<ISettingsApplier, SettingsApplier>();
 
         return services;
     }
