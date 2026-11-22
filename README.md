@@ -67,6 +67,8 @@ cd src/host
 dotnet run --project HomeCursor.Host.Tray
 ```
 
+The host checks for a newer release when it starts and then once a day (`CheckForUpdates` in `settings.json`, on by default). When there is one, the tray shows a notification and an **Update to X** menu item; confirming it downloads the new version, replaces the exe (your `settings.json` is kept) and restarts the host. **Check for updates** in the tray menu looks right away.
+
 ### Client
 
 Requirements: [Android Studio](https://developer.android.com/studio), an Android device or emulator.

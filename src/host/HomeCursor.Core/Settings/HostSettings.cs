@@ -8,6 +8,8 @@ namespace HomeCursor.Core.Settings;
 /// </summary>
 public sealed record HostSettings
 {
+    public const string DefaultUpdateManifestUrl = "https://wip.talgrim.dev/files/manifest.json";
+
     private const int MaxHostNameLength = 64;
 
     /// <summary>Local address the sockets bind to. <c>0.0.0.0</c> listens on every network interface.</summary>
@@ -33,6 +35,15 @@ public sealed record HostSettings
 
     /// <summary>Whether the host shows a notification when a client disconnects.</summary>
     public bool NotifyOnClientDisconnection { get; init; } = true;
+
+    /// <summary>
+    /// Whether the host looks for a newer release (at start and then once a day) and offers to install it.
+    /// The tray menu can still check by hand when this is off.
+    /// </summary>
+    public bool CheckForUpdates { get; init; } = true;
+
+    /// <summary>Address of the release manifest the host checks for updates.</summary>
+    public string UpdateManifestUrl { get; init; } = DefaultUpdateManifestUrl;
 
     /// <summary>
     /// Whether the host writes a diagnostics log (connection events and per-second pointer statistics) to a file,
@@ -72,6 +83,12 @@ public sealed record HostSettings
         if (PingIntervalSeconds is < 1 or > byte.MaxValue)
         {
             throw new SettingsException($"{nameof(PingIntervalSeconds)} must be between 1 and {byte.MaxValue}.");
+        }
+
+        if (!Uri.TryCreate(UpdateManifestUrl, UriKind.Absolute, out var manifestUri) ||
+            manifestUri.Scheme is not ("http" or "https"))
+        {
+            throw new SettingsException($"{nameof(UpdateManifestUrl)} '{UpdateManifestUrl}' is not a valid http(s) address.");
         }
 
         if (HeartbeatTimeoutSeconds <= PingIntervalSeconds)

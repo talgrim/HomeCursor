@@ -4,6 +4,7 @@ using HomeCursor.Core.Networking;
 using HomeCursor.Core.Sessions;
 using HomeCursor.Core.Settings;
 using HomeCursor.Core.Tests.Support;
+using HomeCursor.Core.Updates;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -18,6 +19,7 @@ public sealed class ServiceCollectionExtensionsTests
         services.AddSingleton<ISettingsProvider>(new StubSettingsProvider(settings ?? new HostSettings()));
         services.AddSingleton<IInputInjector, FakeInputInjector>();
         services.AddHomeCursorCore();
+        services.AddHomeCursorUpdates(new UpdateEnvironment(new Version(1, 3, 0), "HomeCursor.exe", "state.json"));
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }
@@ -28,6 +30,16 @@ public sealed class ServiceCollectionExtensionsTests
         using var provider = BuildProvider();
 
         Assert.NotNull(provider.GetRequiredService<IHostService>());
+    }
+
+    [Fact]
+    public void UpdateServices_Resolve()
+    {
+        using var provider = BuildProvider();
+
+        Assert.IsType<ManifestUpdateChecker>(provider.GetRequiredService<IUpdateChecker>());
+        Assert.IsType<ZipUpdateInstaller>(provider.GetRequiredService<IUpdateInstaller>());
+        Assert.Same(provider.GetRequiredService<UpdateMonitor>(), provider.GetRequiredService<IUpdateMonitor>());
     }
 
     [Fact]
