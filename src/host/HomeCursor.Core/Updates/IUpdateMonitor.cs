@@ -15,6 +15,12 @@ public interface IUpdateMonitor
     /// </summary>
     void Start();
 
+    /// <summary>
+    /// Brings the scheduled checks in line with the current <c>CheckForUpdates</c> setting: starts them when it was
+    /// switched on, stops them when it was switched off. Does nothing when they already match.
+    /// </summary>
+    void Refresh();
+
     /// <summary>Checks right now, whatever the schedule or the setting say.</summary>
     /// <exception cref="UpdateException">The check failed.</exception>
     Task<UpdateInfo?> CheckNowAsync(CancellationToken cancellationToken = default);

@@ -18,6 +18,7 @@ public sealed class UpdateMonitor : IUpdateMonitor, IDisposable
     private readonly TimeSpan _retryInterval;
     private readonly CancellationTokenSource _stop = new();
     private readonly object _gate = new();
+    private CancellationTokenSource? _loopStop;
     private Task? _loop;
     private int _disposed;
 
@@ -48,12 +49,36 @@ public sealed class UpdateMonitor : IUpdateMonitor, IDisposable
         if (!_options.Value.CheckForUpdates)
         {
             _logger.LogInformation("Update checks are switched off");
-            return;
         }
 
+        Refresh();
+    }
+
+    public void Refresh()
+    {
         lock (_gate)
         {
-            _loop ??= Task.Run(() => RunAsync(_stop.Token));
+            if (Volatile.Read(ref _disposed) == 1)
+            {
+                return;
+            }
+
+            if (_options.Value.CheckForUpdates)
+            {
+                if (_loop is null)
+                {
+                    _loopStop = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
+                    var token = _loopStop.Token;
+                    _loop = Task.Run(() => RunAsync(token));
+                }
+            }
+            else if (_loop is not null)
+            {
+                _loopStop!.Cancel();
+                _loopStop.Dispose();
+                _loopStop = null;
+                _loop = null;
+            }
         }
     }
 
@@ -77,8 +102,12 @@ public sealed class UpdateMonitor : IUpdateMonitor, IDisposable
         // The container disposes a singleton registered under two service types once per registration.
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
-            _stop.Cancel();
-            _stop.Dispose();
+            lock (_gate)
+            {
+                _stop.Cancel();
+                _loopStop?.Dispose();
+                _stop.Dispose();
+            }
         }
     }
 
