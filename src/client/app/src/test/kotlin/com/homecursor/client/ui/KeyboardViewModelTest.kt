@@ -58,38 +58,89 @@ class KeyboardViewModelTest {
     }
 
     @Test
-    fun modifier_isHeldUntilTheNextOrdinaryKey() {
+    fun modifier_staysHeldAfterAnOrdinaryKey() {
         val viewModel = viewModel()
 
         viewModel.onKeyTapped(SpecialKey.Control)
-        assertEquals(setOf(SpecialKey.Control), viewModel.heldModifiers.value)
         viewModel.onKeyTapped(SpecialKey.C)
 
         assertEquals(
-            listOf(
-                Key(SpecialKey.Control, true),
-                Key(SpecialKey.C, true), Key(SpecialKey.C, false),
-                Key(SpecialKey.Control, false),
-            ),
+            listOf(Key(SpecialKey.Control, true), Key(SpecialKey.C, true), Key(SpecialKey.C, false)),
             sender.events,
         )
+        assertEquals(setOf(SpecialKey.Control), viewModel.heldModifiers.value)
+    }
+
+    @Test
+    fun windowsHeld_movesAWindowWithSeveralArrowsWithoutReleasing() {
+        val viewModel = viewModel()
+
+        viewModel.onKeyTapped(SpecialKey.Windows)
+        repeat(4) { viewModel.onKeyTapped(SpecialKey.Right) }
+        viewModel.onKeyTapped(SpecialKey.Up)
+        viewModel.onKeyTapped(SpecialKey.Windows)
+
+        val expected = buildList {
+            add(Key(SpecialKey.Windows, true))
+            repeat(4) { addAll(listOf(Key(SpecialKey.Right, true), Key(SpecialKey.Right, false))) }
+            addAll(listOf(Key(SpecialKey.Up, true), Key(SpecialKey.Up, false)))
+            add(Key(SpecialKey.Windows, false))
+        }
+        assertEquals(expected, sender.events)
         assertTrue(viewModel.heldModifiers.value.isEmpty())
     }
 
     @Test
-    fun severalModifiers_areAllReleasedAfterTheKey() {
+    fun shiftHeld_typesSeveralLettersWithoutReleasing() {
+        val viewModel = viewModel()
+
+        viewModel.onKeyTapped(SpecialKey.Shift)
+        viewModel.onKeyTapped(SpecialKey.H)
+        viewModel.onKeyTapped(SpecialKey.I)
+
+        assertEquals(
+            listOf(
+                Key(SpecialKey.Shift, true),
+                Key(SpecialKey.H, true), Key(SpecialKey.H, false),
+                Key(SpecialKey.I, true), Key(SpecialKey.I, false),
+            ),
+            sender.events,
+        )
+        assertEquals(setOf(SpecialKey.Shift), viewModel.heldModifiers.value)
+    }
+
+    @Test
+    fun altHeld_cyclesWindowsWithRepeatedTabAndReleasesOnlyWhenTappedAgain() {
+        val viewModel = viewModel()
+
+        viewModel.onKeyTapped(SpecialKey.Alt)
+        repeat(3) { viewModel.onKeyTapped(SpecialKey.Tab) }
+        assertEquals(1 + 3 * 2, sender.events.size)
+        assertEquals(setOf(SpecialKey.Alt), viewModel.heldModifiers.value)
+        viewModel.onKeyTapped(SpecialKey.Alt)
+
+        assertEquals(Key(SpecialKey.Alt, true), sender.events.first())
+        assertEquals(Key(SpecialKey.Alt, false), sender.events.last())
+        assertEquals(1, sender.events.count { it == Key(SpecialKey.Alt, false) })
+        assertTrue(viewModel.heldModifiers.value.isEmpty())
+    }
+
+    @Test
+    fun severalModifiers_allStayHeldAfterAKey() {
         val viewModel = viewModel()
 
         viewModel.onKeyTapped(SpecialKey.Control)
         viewModel.onKeyTapped(SpecialKey.Shift)
         viewModel.onKeyTapped(SpecialKey.Escape)
 
-        assertEquals(Key(SpecialKey.Escape, false), sender.events[3])
         assertEquals(
-            setOf(Key(SpecialKey.Control, false), Key(SpecialKey.Shift, false)),
-            sender.events.drop(4).toSet(),
+            listOf(
+                Key(SpecialKey.Control, true), Key(SpecialKey.Shift, true),
+                Key(SpecialKey.Escape, true), Key(SpecialKey.Escape, false),
+            ),
+            sender.events,
         )
-        assertEquals(6, sender.events.size)
+        assertEquals(setOf(SpecialKey.Control, SpecialKey.Shift), viewModel.heldModifiers.value)
     }
 
     @Test

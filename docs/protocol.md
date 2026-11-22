@@ -42,7 +42,9 @@ A-Z 64-89, 0-9 96-105, Minus 112, Equals 113, LeftBracket 114, RightBracket 115,
 Quote 118, Comma 119, Period 120, Slash 121, Grave 122. Letters, digits and punctuation are physical keys on a US
 layout (Windows virtual keys), so they work in shortcuts such as Ctrl+C; the host's keyboard layout decides which
 character a key produces. Use Text for characters of any other language.
-Hold a modifier by sending `isDown = true`, then `isDown = false` when released.
+Hold a modifier by sending `isDown = true`, then `isDown = false` when released. A client may keep it down across any
+number of other Key messages (Win + arrows, Alt + Tab repeatedly); the host releases whatever is still held when the
+session ends.
 
 ## TCP control connection
 
