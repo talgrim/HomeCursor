@@ -7,5 +7,6 @@
   "HeartbeatTimeoutSeconds": 15,
   "NotifyOnClientConnection": true,
   "NotifyOnClientDisconnection": false,
+  "CheckForUpdates": true,
   "DiagnosticsEnabled": false
 }

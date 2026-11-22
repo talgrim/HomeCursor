@@ -1,6 +1,8 @@
 using HomeCursor.Core;
 using HomeCursor.Core.Sessions;
 using HomeCursor.Core.Settings;
+using HomeCursor.Core.Updates;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace HomeCursor.Host.Tray;
@@ -23,9 +25,17 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _clientItem;
     private readonly SynchronizationContext _uiContext;
+    private readonly UpdateTrayController _updates;
     private bool _exiting;
 
-    public TrayApplicationContext(IHostService host, ISessionMonitor sessions, IOptions<HostSettings> settings)
+    public TrayApplicationContext(
+        IHostService host,
+        ISessionMonitor sessions,
+        IOptions<HostSettings> settings,
+        IUpdateMonitor updateMonitor,
+        IUpdateInstaller updateInstaller,
+        UpdateEnvironment updateEnvironment,
+        ILogger<UpdateTrayController> updateLogger)
     {
         _host = host;
         _sessions = sessions;
@@ -37,15 +47,20 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _clientItem = new ToolStripMenuItem { Enabled = false };
         var exitItem = new ToolStripMenuItem("Exit", image: null, (_, _) => ExitThread());
 
-        var menu = new ContextMenuStrip();
-        menu.Items.AddRange(_statusItem, _clientItem, new ToolStripSeparator(), exitItem);
-
         _notifyIcon = new NotifyIcon
         {
             Icon = _icons.Idle,
-            ContextMenuStrip = menu,
             Visible = true
         };
+
+        _updates = new UpdateTrayController(
+            _notifyIcon, updateMonitor, updateInstaller, sessions, updateEnvironment, _uiContext, ExitThread, updateLogger);
+
+        var menu = new ContextMenuStrip();
+        menu.Items.AddRange(_statusItem, _clientItem, new ToolStripSeparator());
+        menu.Items.AddRange([.. _updates.MenuItems]);
+        menu.Items.AddRange(new ToolStripSeparator(), exitItem);
+        _notifyIcon.ContextMenuStrip = menu;
 
         // The host raises its events from background threads; WinForms controls must be touched on the UI thread.
         _host.StatusChanged += OnHostStatusChanged;
@@ -54,6 +69,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         Refresh();
 
         _ = StartHostAsync();
+        _updates.Start();
     }
 
     protected override void ExitThreadCore()
@@ -62,6 +78,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _host.StatusChanged -= OnHostStatusChanged;
         _sessions.SessionStarted -= OnSessionStarted;
         _sessions.SessionEnded -= OnSessionEnded;
+        _updates.Dispose();
 
         // Run on the thread pool so the blocking wait can never deadlock against the UI thread.
         Task.Run(() => _host.StopAsync()).GetAwaiter().GetResult();
