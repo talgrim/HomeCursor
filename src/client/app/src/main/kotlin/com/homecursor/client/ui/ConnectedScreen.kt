@@ -5,18 +5,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.homecursor.client.connection.HostEndpoint
 
 /**
- * What is shown while connected: the trackpad, with the keyboard button leading to the shortcut list (portrait) or
- * the full-screen on-screen keyboard (landscape). Opening the keyboard from portrait turns the phone to landscape
- * (the activity follows [KeyboardViewModel.isOpen]); until it has turned, the trackpad stays on screen.
+ * What is shown while connected: the trackpad, with the keyboard button leading to the shortcuts screen (portrait)
+ * or the full-screen on-screen keyboard (landscape). Opening the keyboard from portrait turns the phone to landscape
+ * (the activity follows [KeyboardViewModel.isOpen]); until it has turned, the previous screen stays on.
+ * Turning the phone sideways while the shortcuts are open switches to the keyboard.
  */
 @Composable
 fun ConnectedScreen(
@@ -33,8 +31,8 @@ fun ConnectedScreen(
     val mode by keyboardViewModel.mode.collectAsStateWithLifecycle()
     val heldModifiers by keyboardViewModel.heldModifiers.collectAsStateWithLifecycle()
     val shortcuts by shortcutsViewModel.shortcuts.collectAsStateWithLifecycle()
+    val shortcutsOpen by shortcutsViewModel.isOpen.collectAsStateWithLifecycle()
     val tutorialStep by tutorialViewModel.stepIndex.collectAsStateWithLifecycle()
-    var shortcutsOpen by rememberSaveable { mutableStateOf(false) }
     val tutorialTargets = remember { TutorialTargets() }
 
     // The first time the trackpad is shown after connecting, the tour starts by itself.
@@ -42,8 +40,13 @@ fun ConnectedScreen(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
-        // The shortcut list is a portrait thing: turning the phone sideways closes it.
-        LaunchedEffect(landscape) { if (landscape) shortcutsOpen = false }
+        // The shortcuts are a portrait thing: turning the phone sideways trades them for the keyboard.
+        LaunchedEffect(landscape, shortcutsOpen) {
+            if (landscape && shortcutsOpen) {
+                shortcutsViewModel.close()
+                keyboardViewModel.open()
+            }
+        }
 
         if (keyboardOpen && landscape) {
             KeyboardScreen(
@@ -53,6 +56,19 @@ fun ConnectedScreen(
                 onKeyTapped = keyboardViewModel::onKeyTapped,
                 onTextSent = keyboardViewModel::onTextSent,
                 onClose = keyboardViewModel::close,
+            )
+        } else if (shortcutsOpen && !landscape) {
+            ShortcutsScreen(
+                shortcuts = shortcuts,
+                onRun = shortcutsViewModel::run,
+                onAdd = shortcutsViewModel::add,
+                onUpdate = shortcutsViewModel::update,
+                onDelete = shortcutsViewModel::delete,
+                onMove = shortcutsViewModel::move,
+                onRestoreDefaults = shortcutsViewModel::restoreDefaults,
+                // The shortcuts stay on screen until the phone has turned; the effect above then closes them.
+                onOpenKeyboard = keyboardViewModel::open,
+                onBack = shortcutsViewModel::close,
             )
         } else {
             TrackpadScreen(
@@ -65,7 +81,7 @@ fun ConnectedScreen(
                 onButtonReleased = trackpadViewModel::onButtonReleased,
                 onSensitivityChanged = trackpadViewModel::onSensitivityChanged,
                 onNaturalScrollChanged = trackpadViewModel::onNaturalScrollChanged,
-                onKeyboard = { if (landscape) keyboardViewModel.open() else shortcutsOpen = true },
+                onKeyboard = { if (landscape) keyboardViewModel.open() else shortcutsViewModel.open() },
                 onDisconnect = onDisconnect,
                 onForget = onForget,
                 tutorialTargets = tutorialTargets,
@@ -83,23 +99,6 @@ fun ConnectedScreen(
                 onNext = tutorialViewModel::next,
                 onBack = tutorialViewModel::back,
                 onSkip = tutorialViewModel::skip,
-            )
-        }
-
-        if (shortcutsOpen && !landscape) {
-            ShortcutsSheet(
-                shortcuts = shortcuts,
-                onRun = shortcutsViewModel::run,
-                onAdd = shortcutsViewModel::add,
-                onUpdate = shortcutsViewModel::update,
-                onDelete = shortcutsViewModel::delete,
-                onMove = shortcutsViewModel::move,
-                onRestoreDefaults = shortcutsViewModel::restoreDefaults,
-                onOpenKeyboard = {
-                    shortcutsOpen = false
-                    keyboardViewModel.open()
-                },
-                onDismiss = { shortcutsOpen = false },
             )
         }
     }
