@@ -34,7 +34,7 @@ public sealed record HostSettings
     public bool NotifyOnClientConnection { get; init; } = true;
 
     /// <summary>Whether the host shows a notification when a client disconnects.</summary>
-    public bool NotifyOnClientDisconnection { get; init; } = true;
+    public bool NotifyOnClientDisconnection { get; init; }
 
     /// <summary>
     /// Whether the host looks for a newer release (at start and then once a day) and offers to install it.
