@@ -18,7 +18,7 @@ namespace HomeCursor.Core.Networking;
 /// </summary>
 public sealed class TcpControlListener : HostLoopBase
 {
-    private readonly HostSettings _settings;
+    private readonly IOptions<HostSettings> _options;
     private readonly ISessionGate _gate;
     private readonly IMessageDispatcher _dispatcher;
     private readonly ILogger<TcpControlListener> _logger;
@@ -32,7 +32,7 @@ public sealed class TcpControlListener : HostLoopBase
         ILogger<TcpControlListener> logger)
         : base(logger)
     {
-        _settings = settings.Value;
+        _options = settings;
         _gate = gate;
         _dispatcher = dispatcher;
         _logger = logger;
@@ -42,10 +42,11 @@ public sealed class TcpControlListener : HostLoopBase
 
     protected override void Bind()
     {
-        var listener = new TcpListener(_settings.GetBindAddress(), _settings.TcpPort);
+        var settings = _options.Value;
+        var listener = new TcpListener(settings.GetBindAddress(), settings.TcpPort);
         listener.Start();
         _listener = listener;
-        _logger.LogInformation("Listening for clients on TCP {Address}:{Port}", _settings.BindAddress, _settings.TcpPort);
+        _logger.LogInformation("Listening for clients on TCP {Address}:{Port}", settings.BindAddress, settings.TcpPort);
     }
 
     protected override async Task RunIterationAsync(CancellationToken cancellationToken)
@@ -107,11 +108,12 @@ public sealed class TcpControlListener : HostLoopBase
                     return;
                 }
 
+                var settings = _options.Value;
                 var welcome = new WelcomeMessage(
                     ProtocolDefaults.Version,
                     session.SessionId,
-                    (ushort)_settings.UdpPort,
-                    (byte)_settings.PingIntervalSeconds);
+                    (ushort)settings.UdpPort,
+                    (byte)settings.PingIntervalSeconds);
                 await MessageFraming.WriteAsync(stream, welcome, cancellationToken).ConfigureAwait(false);
 
                 await ReceiveLoopAsync(stream, cancellationToken).ConfigureAwait(false);
@@ -124,7 +126,7 @@ public sealed class TcpControlListener : HostLoopBase
             {
                 endReason = SessionEndReason.TimedOut;
                 _logger.LogWarning(
-                    "Client sent nothing for {Timeout}, closing", _settings.GetHeartbeatTimeout());
+                    "Client sent nothing for {Timeout}, closing", _options.Value.GetHeartbeatTimeout());
             }
             catch (ProtocolException ex)
             {
@@ -184,7 +186,7 @@ public sealed class TcpControlListener : HostLoopBase
     private async Task<ProtocolMessage?> ReadAsync(NetworkStream stream, CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(_settings.GetHeartbeatTimeout());
+        timeout.CancelAfter(_options.Value.GetHeartbeatTimeout());
         return await MessageFraming.ReadAsync(stream, timeout.Token).ConfigureAwait(false);
     }
 }

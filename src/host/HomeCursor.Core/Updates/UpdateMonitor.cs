@@ -11,7 +11,7 @@ public sealed class UpdateMonitor : IUpdateMonitor, IDisposable
 
     private readonly IUpdateChecker _checker;
     private readonly IUpdateStateStore _store;
-    private readonly HostSettings _settings;
+    private readonly IOptions<HostSettings> _options;
     private readonly ILogger<UpdateMonitor> _logger;
     private readonly TimeProvider _time;
     private readonly TimeSpan _checkInterval;
@@ -32,7 +32,7 @@ public sealed class UpdateMonitor : IUpdateMonitor, IDisposable
     {
         _checker = checker;
         _store = store;
-        _settings = settings.Value;
+        _options = settings;
         _logger = logger;
         _time = time ?? TimeProvider.System;
         _checkInterval = checkInterval ?? DefaultCheckInterval;
@@ -45,7 +45,7 @@ public sealed class UpdateMonitor : IUpdateMonitor, IDisposable
 
     public void Start()
     {
-        if (!_settings.CheckForUpdates)
+        if (!_options.Value.CheckForUpdates)
         {
             _logger.LogInformation("Update checks are switched off");
             return;

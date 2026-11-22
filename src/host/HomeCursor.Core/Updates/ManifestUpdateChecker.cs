@@ -12,7 +12,7 @@ public sealed class ManifestUpdateChecker : IUpdateChecker
     public const string Suffix = "-win-x64.zip";
 
     private readonly HttpClient _http;
-    private readonly HostSettings _settings;
+    private readonly IOptions<HostSettings> _options;
     private readonly UpdateEnvironment _environment;
     private readonly ILogger<ManifestUpdateChecker> _logger;
 
@@ -23,14 +23,14 @@ public sealed class ManifestUpdateChecker : IUpdateChecker
         ILogger<ManifestUpdateChecker> logger)
     {
         _http = http;
-        _settings = settings.Value;
+        _options = settings;
         _environment = environment;
         _logger = logger;
     }
 
     public async Task<UpdateInfo?> CheckAsync(CancellationToken cancellationToken = default)
     {
-        var manifestUri = new Uri(_settings.UpdateManifestUrl);
+        var manifestUri = new Uri(_options.Value.UpdateManifestUrl);
 
         UpdateInfo? latest;
         try

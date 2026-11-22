@@ -18,8 +18,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private readonly IHostService _host;
     private readonly ISessionMonitor _sessions;
-    private readonly bool _notifyOnClientConnection;
-    private readonly bool _notifyOnClientDisconnection;
+    private readonly IOptions<HostSettings> _settings;
     private readonly TrayIcons _icons = new();
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _statusItem;
@@ -39,8 +38,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         _host = host;
         _sessions = sessions;
-        _notifyOnClientConnection = settings.Value.NotifyOnClientConnection;
-        _notifyOnClientDisconnection = settings.Value.NotifyOnClientDisconnection;
+        _settings = settings;
         _uiContext = new WindowsFormsSynchronizationContext();
 
         _statusItem = new ToolStripMenuItem { Enabled = false };
@@ -132,7 +130,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         Refresh();
 
-        if (_notifyOnClientConnection)
+        if (_settings.Value.NotifyOnClientConnection)
         {
             _notifyIcon.ShowBalloonTip(
                 timeout: 5_000,
@@ -152,7 +150,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         Refresh();
 
-        if (_notifyOnClientDisconnection)
+        if (_settings.Value.NotifyOnClientDisconnection)
         {
             _notifyIcon.ShowBalloonTip(
                 timeout: 5_000,

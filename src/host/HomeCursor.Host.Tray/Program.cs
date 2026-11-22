@@ -100,7 +100,9 @@ internal static class Program
             }
         });
 
-        services.AddSingleton(Options.Create(settings));
+        var holder = new SettingsHolder(settings);
+        services.AddSingleton<ISettingsHolder>(holder);
+        services.AddSingleton<IOptions<HostSettings>>(holder);
         services.AddSingleton<IInputInjector, WindowsInputInjector>();
         services.AddHomeCursorCore();
         services.AddHomeCursorUpdates(updateEnvironment);
