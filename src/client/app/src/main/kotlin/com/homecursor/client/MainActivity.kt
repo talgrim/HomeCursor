@@ -21,14 +21,22 @@ import com.homecursor.client.storage.SharedPrefsSavedHostStore
 import com.homecursor.client.storage.SharedPrefsShortcutStore
 import com.homecursor.client.storage.SharedPrefsTrackpadSettingsStore
 import com.homecursor.client.storage.SharedPrefsTutorialStore
+import com.homecursor.client.storage.SharedPrefsUpdateSettingsStore
 import com.homecursor.client.ui.HomeCursorApp
 import com.homecursor.client.ui.HomeViewModel
 import com.homecursor.client.ui.KeyboardViewModel
 import com.homecursor.client.ui.ShortcutsViewModel
 import com.homecursor.client.ui.TrackpadViewModel
 import com.homecursor.client.ui.TutorialViewModel
+import com.homecursor.client.ui.UpdateViewModel
+import com.homecursor.client.update.AppVersion
+import com.homecursor.client.update.ManifestUpdateChecker
+import com.homecursor.client.update.SystemApkInstaller
+import com.homecursor.client.update.UrlConnectionHttpFetcher
+import com.homecursor.client.update.VerifyingApkDownloader
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     private val viewModel: HomeViewModel by viewModels { HomeViewModelFactory(applicationContext) }
@@ -45,6 +53,8 @@ class MainActivity : ComponentActivity() {
 
     private val tutorialViewModel: TutorialViewModel by viewModels { TutorialViewModelFactory(applicationContext) }
 
+    private val updateViewModel: UpdateViewModel by viewModels { UpdateViewModelFactory(applicationContext) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -59,13 +69,14 @@ class MainActivity : ComponentActivity() {
             }
         }
         setContent {
-            HomeCursorApp(viewModel, trackpadViewModel, keyboardViewModel, shortcutsViewModel, tutorialViewModel)
+            HomeCursorApp(viewModel, trackpadViewModel, keyboardViewModel, shortcutsViewModel, tutorialViewModel, updateViewModel)
         }
     }
 
     override fun onStart() {
         super.onStart()
         viewModel.onForeground()
+        updateViewModel.onForeground()
     }
 
     override fun onStop() {
@@ -120,6 +131,24 @@ private class TutorialViewModelFactory(private val context: Context) : ViewModel
         )
         return TutorialViewModel(store) as T
     }
+}
+
+private class UpdateViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        val installed = installedVersion(context)
+        val fetcher = UrlConnectionHttpFetcher()
+        // A build whose version cannot be read is never offered an update: pretend it is newer than any release.
+        val checker = ManifestUpdateChecker(fetcher, installed ?: AppVersion(Int.MAX_VALUE, 0, 0))
+        val downloader = VerifyingApkDownloader(fetcher, File(context.cacheDir, SystemApkInstaller.DIRECTORY_NAME))
+        val settings = SharedPrefsUpdateSettingsStore(
+            context.getSharedPreferences(SharedPrefsUpdateSettingsStore.FILE_NAME, Context.MODE_PRIVATE),
+        )
+        return UpdateViewModel(checker, downloader, SystemApkInstaller(context), settings, installed) as T
+    }
+
+    private fun installedVersion(context: Context): AppVersion? =
+        AppVersion.parse(context.packageManager.getPackageInfo(context.packageName, 0).versionName)
 }
 
 private class HomeViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
