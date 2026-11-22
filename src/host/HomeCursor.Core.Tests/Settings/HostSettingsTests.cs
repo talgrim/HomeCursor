@@ -47,9 +47,9 @@ public class HostSettingsTests
     }
 
     [Fact]
-    public void NotifyOnClientDisconnection_DefaultsToTrue()
+    public void NotifyOnClientDisconnection_DefaultsToFalse()
     {
-        Assert.True(new HostSettings().NotifyOnClientDisconnection);
+        Assert.False(new HostSettings().NotifyOnClientDisconnection);
     }
 
     [Fact]
