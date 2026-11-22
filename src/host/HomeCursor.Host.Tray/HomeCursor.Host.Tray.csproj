@@ -9,7 +9,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>HomeCursor</AssemblyName>
     <ApplicationIcon>Assets\HomeCursor.ico</ApplicationIcon>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Product>HomeCursor</Product>
   </PropertyGroup>
 

@@ -6,7 +6,7 @@ plugins {
 }
 
 // release-please bumps this line; versionCode is derived so it always grows with the version.
-val appVersion = "1.3.0" // x-release-please-version
+val appVersion = "1.4.0" // x-release-please-version
 val appVersionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
 
 android {
