@@ -72,7 +72,7 @@ internal static class Program
         var updateEnvironment = CreateUpdateEnvironment();
         ExecutableReplacer.DeleteLeftover(updateEnvironment.ExecutablePath);
 
-        using var provider = BuildServiceProvider(settings, updateEnvironment);
+        using var provider = BuildServiceProvider(settings, settingsPath, updateEnvironment);
 
         LogStartup(provider.GetRequiredService<ILogger<TrayApplicationContext>>(), settingsPath, settings);
         Application.Run(provider.GetRequiredService<TrayApplicationContext>());
@@ -85,7 +85,8 @@ internal static class Program
             Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HomeCursor", "update-state.json"));
 
-    private static ServiceProvider BuildServiceProvider(HostSettings settings, UpdateEnvironment updateEnvironment)
+    private static ServiceProvider BuildServiceProvider(
+        HostSettings settings, string settingsPath, UpdateEnvironment updateEnvironment)
     {
         var services = new ServiceCollection();
 
@@ -100,6 +101,8 @@ internal static class Program
             }
         });
 
+        services.AddSingleton<ISettingsProvider>(sp =>
+            new JsonFileSettingsProvider(settingsPath, sp.GetRequiredService<ILogger<JsonFileSettingsProvider>>()));
         var holder = new SettingsHolder(settings);
         services.AddSingleton<ISettingsHolder>(holder);
         services.AddSingleton<IOptions<HostSettings>>(holder);

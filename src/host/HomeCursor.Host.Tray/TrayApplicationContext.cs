@@ -18,31 +18,43 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private readonly IHostService _host;
     private readonly ISessionMonitor _sessions;
-    private readonly IOptions<HostSettings> _settings;
+    private readonly ISettingsHolder _settings;
+    private readonly ISettingsApplier _settingsApplier;
+    private readonly IUpdateMonitor _updateMonitor;
+    private readonly UpdateEnvironment _updateEnvironment;
+    private readonly ILogger<TrayApplicationContext> _logger;
     private readonly TrayIcons _icons = new();
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _clientItem;
     private readonly SynchronizationContext _uiContext;
     private readonly UpdateTrayController _updates;
+    private SettingsForm? _settingsForm;
     private bool _exiting;
 
     public TrayApplicationContext(
         IHostService host,
         ISessionMonitor sessions,
-        IOptions<HostSettings> settings,
+        ISettingsHolder settings,
+        ISettingsApplier settingsApplier,
         IUpdateMonitor updateMonitor,
         IUpdateInstaller updateInstaller,
         UpdateEnvironment updateEnvironment,
-        ILogger<UpdateTrayController> updateLogger)
+        ILogger<UpdateTrayController> updateLogger,
+        ILogger<TrayApplicationContext> logger)
     {
         _host = host;
         _sessions = sessions;
         _settings = settings;
+        _settingsApplier = settingsApplier;
+        _updateMonitor = updateMonitor;
+        _updateEnvironment = updateEnvironment;
+        _logger = logger;
         _uiContext = new WindowsFormsSynchronizationContext();
 
         _statusItem = new ToolStripMenuItem { Enabled = false };
         _clientItem = new ToolStripMenuItem { Enabled = false };
+        var settingsItem = new ToolStripMenuItem("Settings…", image: null, (_, _) => ShowSettings());
         var exitItem = new ToolStripMenuItem("Exit", image: null, (_, _) => ExitThread());
 
         _notifyIcon = new NotifyIcon
@@ -57,13 +69,14 @@ internal sealed class TrayApplicationContext : ApplicationContext
         var menu = new ContextMenuStrip();
         menu.Items.AddRange(_statusItem, _clientItem, new ToolStripSeparator());
         menu.Items.AddRange([.. _updates.MenuItems]);
-        menu.Items.AddRange(new ToolStripSeparator(), exitItem);
+        menu.Items.AddRange(settingsItem, new ToolStripSeparator(), exitItem);
         _notifyIcon.ContextMenuStrip = menu;
 
         // The host raises its events from background threads; WinForms controls must be touched on the UI thread.
         _host.StatusChanged += OnHostStatusChanged;
         _sessions.SessionStarted += OnSessionStarted;
         _sessions.SessionEnded += OnSessionEnded;
+        _settings.Changed += OnSettingsChanged;
         Refresh();
 
         _ = StartHostAsync();
@@ -76,6 +89,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _host.StatusChanged -= OnHostStatusChanged;
         _sessions.SessionStarted -= OnSessionStarted;
         _sessions.SessionEnded -= OnSessionEnded;
+        _settings.Changed -= OnSettingsChanged;
+        _settingsForm?.Close();
         _updates.Dispose();
 
         // Run on the thread pool so the blocking wait can never deadlock against the UI thread.
@@ -84,6 +99,38 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _notifyIcon.Dispose();
         _icons.Dispose();
         base.ExitThreadCore();
+    }
+
+    // CheckForUpdates may have been switched; the other settings are read when they are needed.
+    private void OnSettingsChanged(object? sender, HostSettings settings) => _updateMonitor.Refresh();
+
+    private void ShowSettings()
+    {
+        if (_settingsForm is { IsDisposed: false })
+        {
+            _settingsForm.Activate();
+            return;
+        }
+
+        _settingsForm = new SettingsForm(_settings, _settingsApplier, RestartApplication);
+        _settingsForm.FormClosed += (_, _) => _settingsForm = null;
+        _settingsForm.Show();
+    }
+
+    private void RestartApplication()
+    {
+        if (ApplicationRestarter.TryStart(_updateEnvironment.ExecutablePath, _logger))
+        {
+            // The new process waits for this one to release the single-instance mutex.
+            ExitThread();
+            return;
+        }
+
+        MessageBox.Show(
+            "HomeCursor could not restart itself. The settings are saved; start HomeCursor again to use them.",
+            "HomeCursor settings",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning);
     }
 
     private void OnHostStatusChanged(object? sender, HostStatus status) =>
