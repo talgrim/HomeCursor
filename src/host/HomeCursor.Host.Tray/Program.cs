@@ -18,7 +18,7 @@ internal static class Program
     private static void Main(string[] args)
     {
         // An updated host is started by the one it replaces, which may still be shutting down.
-        var restartedByUpdate = args.Contains(UpdateTrayController.RestartedArgument);
+        var restartedByUpdate = args.Contains(ApplicationRestarter.RestartedArgument);
 
         using var mutex = new Mutex(initiallyOwned: false, "HomeCursor.Host.Tray");
         if (!TryBecomeFirstInstance(mutex, restartedByUpdate ? PreviousInstanceTimeout : TimeSpan.Zero))
