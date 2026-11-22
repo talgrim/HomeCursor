@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.3.0](https://github.com/talgrim/HomeCursor/compare/v1.2.0...v1.3.0) (2026-11-22)
+
+
+### Features
+
+* **client:** keep keyboard modifiers held until tapped again ([309fcde](https://github.com/talgrim/HomeCursor/commit/309fcde6042d421f4fc0cb18f5b77b4dbc2d3d97))
+* **client:** keep keyboard modifiers held until tapped again ([2ddb96c](https://github.com/talgrim/HomeCursor/commit/2ddb96cfbb6ad8479d4b73af001fcd595af450ff))
+* **client:** make the shortcuts view a screen that survives lock and unlock ([e550d47](https://github.com/talgrim/HomeCursor/commit/e550d4706bcf615231c73d1b9da37b92427975c0))
+* **client:** make the shortcuts view a screen that survives lock and unlock ([bee0a7a](https://github.com/talgrim/HomeCursor/commit/bee0a7a4c74a42512346930582650854812403d2))
+
 ## [1.2.0](https://github.com/talgrim/HomeCursor/compare/v1.1.0...v1.2.0) (2026-11-19)
 
 
