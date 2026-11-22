@@ -35,7 +35,9 @@ once would make the start of the drag a second press, which Windows treats as a 
 would maximise instead of moving).
 
 The gear in the upper right corner of the pad opens the settings: pointer speed (0.5× to 3×, 1× by default) and natural scrolling (off by default: fingers
-moving down scroll down, like a mouse wheel), a Tutorial item that replays the guided tour, plus Disconnect and Forget this PC. The tour (the gestures, the buttons and the settings, step by step, with a Skip option) starts by itself the first time the touchpad is shown after connecting.
+moving down scroll down, like a mouse wheel), a Tutorial item that replays the guided tour, an Updates section (current version, **Check for updates**, a switch for the automatic check) plus Disconnect and Forget this PC. The tour (the gestures, the buttons and the settings, step by step, with a Skip option) starts by itself the first time the touchpad is shown after connecting.
+
+The app checks for a newer version when it starts (at most once a day, switchable in the settings). A new version shows as a card on the PC list and a dot on the gear; **Update** downloads it and opens Android's installer. The first time, Android asks you to allow HomeCursor to install apps; every update is confirmed in the system dialog.
 
 ## Repository layout
 
@@ -67,6 +69,10 @@ cd src/host
 dotnet run --project HomeCursor.Host.Tray
 ```
 
+The host checks for a newer release when it starts and then once a day (`CheckForUpdates` in `settings.json`, on by default). When there is one, the tray shows a notification and an **Update to X** menu item; confirming it downloads the new version, replaces the exe (your `settings.json` is kept) and restarts the host. **Check for updates** in the tray menu looks right away.
+
+**Settings…** in the tray menu opens a window for the name shown on the phone, the notifications, the ports, the update check and the diagnostics log. Changes apply at once (a port change restarts the host and disconnects the phone; the diagnostics log needs a restart of the app) and are written to `settings.json`, keeping your comments. Bind address, ping and heartbeat timings and the update manifest URL are only set in the file.
+
 ### Client
 
 Requirements: [Android Studio](https://developer.android.com/studio), an Android device or emulator.
@@ -89,6 +95,14 @@ Merging that PR tags the release, builds the host zip and the signed APK and pub
 into `develop` so the bumped version is there too. Repository secrets used: `WIP_FLY_API_TOKEN`,
 `ANDROID_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. The repository setting "Allow GitHub
 Actions to create and approve pull requests" must be on for the release PR.
+
+**Update signing.** Hosts only install an update whose signature fits the public key built into them
+(`ReleaseSigningKey.cs`), so someone who can only upload to the download server cannot push a program to users' PCs.
+The `Release` workflow signs the host zip with `scripts/sign-host-update.sh` and publishes `<zip>.sig` before the zip;
+the private key (ECDSA P-256, PEM) is the repository secret `UPDATE_SIGNING_KEY` and a release without it fails. Back
+the key up. To make a new pair, run the two `openssl` commands in the script's header, put the public half into
+`ReleaseSigningKey.cs` and the private half into the secret; hosts built with the old key can then no longer update
+by themselves and have to be installed by hand once.
 
 To build by hand:
 

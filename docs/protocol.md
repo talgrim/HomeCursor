@@ -93,7 +93,8 @@ The client then connects to `<reply source address>:<tcpPort>`.
 ## Host settings
 
 The Windows host reads `settings.json` from its own directory at startup. The file ships with the app (source:
-`src/host/HomeCursor.Host.Tray/settings.json`); if it is missing, it is recreated with defaults:
+`src/host/HomeCursor.Host.Tray/settings.json`); if it is missing, it is recreated with defaults. The tray's **Settings…**
+window edits the file (it changes only the values that were changed, so comments and unknown keys stay):
 
 ```json
 {
@@ -105,13 +106,16 @@ The Windows host reads `settings.json` from its own directory at startup. The fi
   "PingIntervalSeconds": 5,
   "HeartbeatTimeoutSeconds": 15,
   "NotifyOnClientConnection": true,
-  "NotifyOnClientDisconnection": true,
-  "DiagnosticsEnabled": false
+  "NotifyOnClientDisconnection": false,
+  "CheckForUpdates": true,
+  "UpdateManifestUrl": "https://wip.talgrim.dev/files/manifest.json",
+  "DiagnosticsEnabled": false,
+  "DiagnosticsLogDirectory": null
 }
 ```
 
 Every property is optional. Ports must be 1-65535, `UdpPort` must differ from `DiscoveryPort`, and
-`HeartbeatTimeoutSeconds` must be greater than `PingIntervalSeconds`. `NotifyOnClientConnection` and `NotifyOnClientDisconnection` (both default `true`) show a tray notification when a client connects or disconnects;
+`HeartbeatTimeoutSeconds` must be greater than `PingIntervalSeconds`. `NotifyOnClientConnection` (default `true`) and `NotifyOnClientDisconnection` (default `false`) show a tray notification when a client connects or disconnects;
 the tray menu and icon always show the connected client. Invalid settings stop the host at startup with a message.
 
 `DiagnosticsEnabled` (default `false`) makes the host write a diagnostics log to `homecursor.log` (rotated, at most

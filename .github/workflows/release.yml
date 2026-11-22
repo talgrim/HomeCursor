@@ -75,6 +75,23 @@ jobs:
         run: dotnet test src/host/HomeCursor.Host.sln -c Release
       - name: Build the zip
         run: bash scripts/publish-host.sh
+      # Installed hosts only take an update whose signature fits the public key built into them. The script
+      # fails if the secret is missing or does not match that key, so an unsigned release is never published.
+      - name: Sign the zip
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: bash scripts/sign-host-update.sh artifacts/HomeCursor-Host-win-x64.zip "$VERSION"
+      # The signature goes up first: once the zip is in the manifest, hosts look for its signature at once.
+      - uses: talgrim/fly-volume-publish@v1
+        with:
+          file: artifacts/HomeCursor-Host-win-x64.zip.sig
+          product: homecursor-host
+          version: ${{ needs.plan.outputs.version }}
+          suffix: -win-x64.zip.sig
+          fly-app: wip-talgrim
+          base-url: https://wip.talgrim.dev
+          fly-api-token: ${{ secrets.WIP_FLY_API_TOKEN }}
       - uses: talgrim/fly-volume-publish@v1
         with:
           file: artifacts/HomeCursor-Host-win-x64.zip

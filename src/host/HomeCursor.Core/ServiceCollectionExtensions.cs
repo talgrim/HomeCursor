@@ -14,13 +14,14 @@ public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the platform-independent host services: session gate and monitor, message dispatcher, the host loops and <see cref="IHostService"/>.
-    /// The caller must also register <see cref="IInputInjector"/>, logging and either <see cref="ISettingsProvider"/>
-    /// or <see cref="IOptions{HostSettings}"/> itself.
+    /// The caller must also register <see cref="IInputInjector"/>, logging and either <see cref="ISettingsProvider"/>,
+    /// an <see cref="ISettingsHolder"/> or <see cref="IOptions{HostSettings}"/> itself.
     /// </summary>
     public static IServiceCollection AddHomeCursorCore(this IServiceCollection services)
     {
-        services.TryAddSingleton<IOptions<HostSettings>>(
-            sp => Options.Create(sp.GetRequiredService<ISettingsProvider>().Load()));
+        services.TryAddSingleton<ISettingsHolder>(
+            sp => new SettingsHolder(sp.GetRequiredService<ISettingsProvider>().Load()));
+        services.TryAddSingleton<IOptions<HostSettings>>(sp => sp.GetRequiredService<ISettingsHolder>());
 
         services.AddSingleton<SessionGate>();
         services.AddSingleton<ISessionGate>(sp => sp.GetRequiredService<SessionGate>());
@@ -38,6 +39,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHostLoop, TcpControlListener>();
 
         services.AddSingleton<IHostService, HostService>();
+        services.AddSingleton<ISettingsApplier, SettingsApplier>();
 
         return services;
     }

@@ -2,6 +2,7 @@ using HomeCursor.Core;
 using HomeCursor.Core.Diagnostics;
 using HomeCursor.Core.Input;
 using HomeCursor.Core.Settings;
+using HomeCursor.Core.Updates;
 using HomeCursor.Host.Tray;
 using HomeCursor.Host.Windows;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,15 +12,45 @@ using Microsoft.Extensions.Options;
 
 internal static class Program
 {
+    private static readonly TimeSpan PreviousInstanceTimeout = TimeSpan.FromSeconds(15);
+
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
-        using var mutex = new Mutex(initiallyOwned: true, "HomeCursor.Host.Tray", out var isFirstInstance);
-        if (!isFirstInstance)
+        // An updated host is started by the one it replaces, which may still be shutting down.
+        var restartedByUpdate = args.Contains(ApplicationRestarter.RestartedArgument);
+
+        using var mutex = new Mutex(initiallyOwned: false, "HomeCursor.Host.Tray");
+        if (!TryBecomeFirstInstance(mutex, restartedByUpdate ? PreviousInstanceTimeout : TimeSpan.Zero))
         {
             return;
         }
 
+        try
+        {
+            Run();
+        }
+        finally
+        {
+            mutex.ReleaseMutex();
+        }
+    }
+
+    private static bool TryBecomeFirstInstance(Mutex mutex, TimeSpan timeout)
+    {
+        try
+        {
+            return mutex.WaitOne(timeout);
+        }
+        catch (AbandonedMutexException)
+        {
+            // The previous instance ended without releasing it; the mutex is ours now.
+            return true;
+        }
+    }
+
+    private static void Run()
+    {
         ApplicationConfiguration.Initialize();
 
         // settings.json ships next to the executable (copied from the project on build).
@@ -38,13 +69,24 @@ internal static class Program
             return;
         }
 
-        using var provider = BuildServiceProvider(settings);
+        var updateEnvironment = CreateUpdateEnvironment();
+        ExecutableReplacer.DeleteLeftover(updateEnvironment.ExecutablePath);
+
+        using var provider = BuildServiceProvider(settings, settingsPath, updateEnvironment);
 
         LogStartup(provider.GetRequiredService<ILogger<TrayApplicationContext>>(), settingsPath, settings);
         Application.Run(provider.GetRequiredService<TrayApplicationContext>());
     }
 
-    private static ServiceProvider BuildServiceProvider(HostSettings settings)
+    private static UpdateEnvironment CreateUpdateEnvironment() =>
+        new(
+            typeof(Program).Assembly.GetName().Version ?? new Version(0, 0),
+            Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "HomeCursor.exe"),
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HomeCursor", "update-state.json"));
+
+    private static ServiceProvider BuildServiceProvider(
+        HostSettings settings, string settingsPath, UpdateEnvironment updateEnvironment)
     {
         var services = new ServiceCollection();
 
@@ -59,9 +101,14 @@ internal static class Program
             }
         });
 
-        services.AddSingleton(Options.Create(settings));
+        services.AddSingleton<ISettingsProvider>(sp =>
+            new JsonFileSettingsProvider(settingsPath, sp.GetRequiredService<ILogger<JsonFileSettingsProvider>>()));
+        var holder = new SettingsHolder(settings);
+        services.AddSingleton<ISettingsHolder>(holder);
+        services.AddSingleton<IOptions<HostSettings>>(holder);
         services.AddSingleton<IInputInjector, WindowsInputInjector>();
         services.AddHomeCursorCore();
+        services.AddHomeCursorUpdates(updateEnvironment);
 
         services.AddSingleton<TrayApplicationContext>();
 
